@@ -125,91 +125,87 @@ export default function MatchesList({
   return (
     <div className="space-y-6">
       {/* Search & Filter Controls */}
-      <div className="flex flex-col md:flex-row gap-4 items-center justify-between">
-        <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto items-center">
-          {/* Search */}
-          <div className="relative w-full sm:w-64">
-            <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <input
-              type="text"
-              placeholder="Tìm kiếm quốc gia..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full bg-card border border-white/5 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
-            />
-          </div>
-
-          {/* View Mode Toggle Switch */}
-          <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-auto justify-center">
-            <button
-              onClick={() => setViewMode('list')}
-              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
-                viewMode === 'list'
-                  ? 'bg-primary text-primary-foreground shadow'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <Grid className="h-3.5 w-3.5" />
-              Danh sách
-            </button>
-            <button
-              onClick={() => setViewMode('bracket')}
-              className={`flex items-center justify-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
-                viewMode === 'bracket'
-                  ? 'bg-primary text-primary-foreground shadow'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              <GitFork className="h-3.5 w-3.5" />
-              Cây thi đấu
-            </button>
-          </div>
-        </div>
-
-        {/* Filters / Actions */}
-        {viewMode === 'list' ? (
-          <div className="flex flex-wrap items-center gap-2 w-full md:w-auto">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-              <Filter className="h-3.5 w-3.5" />
-              <span>Bộ lọc:</span>
+      <div className="bg-card/30 border border-white/5 p-4 rounded-2xl backdrop-blur-sm space-y-4">
+        {/* Row 1: Search & Toggle & Sync */}
+        <div className="flex flex-col md:flex-row gap-3 md:items-center md:justify-between">
+          <div className="flex flex-col sm:flex-row gap-3 items-center w-full md:w-auto">
+            {/* Search */}
+            <div className="relative w-full sm:w-64">
+              <Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+              <input
+                type="text"
+                placeholder="Tìm kiếm quốc gia..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="w-full bg-background/50 border border-white/10 rounded-xl pl-10 pr-4 py-2.5 text-sm text-white focus:outline-none focus:border-primary/50 transition-colors"
+              />
             </div>
-            {stages.map((stage) => (
+
+            {/* View Mode Toggle Switch */}
+            <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-auto justify-center">
               <button
-                key={stage.value}
-                onClick={() => setSelectedStage(stage.value)}
-                className={`text-xs font-semibold py-1.5 px-3 rounded-lg border transition-all cursor-pointer ${
-                  selectedStage === stage.value
-                    ? 'bg-primary text-primary-foreground border-primary'
-                    : 'bg-card text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/5'
+                onClick={() => setViewMode('list')}
+                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
+                  viewMode === 'list'
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'text-muted-foreground hover:text-foreground'
                 }`}
               >
-                {stage.label}
+                <Grid className="h-3.5 w-3.5" />
+                Danh sách
               </button>
-            ))}
-
-            {/* Sync Button */}
-            <button
-              onClick={handleSyncMatches}
-              disabled={isSyncing}
-              className="flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg border border-white/5 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer ml-auto md:ml-2 disabled:opacity-50"
-              title="Đồng bộ lịch thi đấu từ nguồn dữ liệu"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Đang đồng bộ...' : 'Cập nhật lịch'}
-            </button>
+              <button
+                onClick={() => setViewMode('bracket')}
+                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
+                  viewMode === 'bracket'
+                    ? 'bg-primary text-primary-foreground shadow'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                <GitFork className="h-3.5 w-3.5" />
+                Cây thi đấu
+              </button>
+            </div>
           </div>
-        ) : (
-          /* Show only Sync Button in Bracket Mode */
+
+          {/* Sync Button */}
           <div className="w-full md:w-auto flex justify-end">
             <button
               onClick={handleSyncMatches}
               disabled={isSyncing}
-              className="flex items-center gap-1.5 text-xs font-semibold py-1.5 px-3 rounded-lg border border-white/5 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
+              className="w-full md:w-auto flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 px-4 rounded-xl border border-white/5 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
               title="Đồng bộ lịch thi đấu từ nguồn dữ liệu"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
               {isSyncing ? 'Đang đồng bộ...' : 'Cập nhật lịch'}
             </button>
+          </div>
+        </div>
+
+        {/* Row 2: Filters (only in list mode) */}
+        {viewMode === 'list' && (
+          <div className="border-t border-white/5 pt-4 flex flex-col md:flex-row md:items-center gap-3">
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
+              <Filter className="h-3.5 w-3.5" />
+              <span>Bộ lọc:</span>
+            </div>
+            
+            {/* Scrollable container on mobile, wrapped on larger screens */}
+            <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+              {stages.map((stage) => (
+                <button
+                  key={stage.value}
+                  onClick={() => setSelectedStage(stage.value)}
+                  className={`text-xs font-bold py-2 px-3.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap ${
+                    selectedStage === stage.value
+                      ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20'
+                      : 'bg-background/40 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/5'
+                  }`}
+                >
+                  {stage.label}
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>

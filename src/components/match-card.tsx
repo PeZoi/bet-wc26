@@ -122,12 +122,12 @@ export default function MatchCard({
       <div className="flex items-center justify-between gap-4 py-2">
         {/* Home Team */}
         <div className="flex flex-col items-center flex-1 text-center">
-          <div className="relative h-12 w-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-300">
+          <div className="relative h-[34px] w-[50px] flex items-center justify-center rounded-lg bg-white/5 border border-white/5 overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-300">
             {match.home_logo ? (
               <img
                 src={match.home_logo}
                 alt={`${match.home_team} flag`}
-                className="h-8 w-11 object-cover"
+                className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.home_team;
                 }}
@@ -163,12 +163,12 @@ export default function MatchCard({
 
         {/* Away Team */}
         <div className="flex flex-col items-center flex-1 text-center">
-          <div className="relative h-12 w-12 flex items-center justify-center rounded-xl bg-white/5 border border-white/5 overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-300">
+          <div className="relative h-[34px] w-[50px] flex items-center justify-center rounded-lg bg-white/5 border border-white/5 overflow-hidden shadow-md group-hover:scale-105 transition-transform duration-300">
             {match.away_logo ? (
               <img
                 src={match.away_logo}
                 alt={`${match.away_team} flag`}
-                className="h-8 w-11 object-cover"
+                className="h-full w-full object-cover"
                 onError={(e) => {
                   (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.away_team;
                 }}

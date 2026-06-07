@@ -78,11 +78,20 @@ export default function Navbar() {
 				<div className='flex h-16 items-center justify-between'>
 					{/* Logo */}
 					<div className='flex items-center'>
-						<Link href='/' className='flex items-center gap-2 group'>
-							<Trophy className='h-6 w-6 text-primary group-hover:rotate-12 transition-transform duration-300' />
-							<span className='text-xl font-bold tracking-tight bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent'>
-								WC2026 Prediction
-							</span>
+						<Link href='/' className='flex items-center gap-2.5 group'>
+							<img 
+								src="/wc26.webp" 
+								alt="World Cup 2026 Logo" 
+								className="h-9 w-auto object-contain group-hover:scale-105 transition-transform duration-300"
+							/>
+							<div className="flex flex-col items-start leading-none gap-0.5">
+								<span className="text-[10px] font-black tracking-[0.25em] text-muted-foreground/80 uppercase">
+									FIFA
+								</span>
+								<span className="text-sm font-black tracking-wide text-white uppercase bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent">
+									WORLD CUP <span className="bg-gradient-to-r from-emerald-400 to-cyan-400 bg-clip-text text-transparent font-black">2026</span>
+								</span>
+							</div>
 						</Link>
 					</div>
 
