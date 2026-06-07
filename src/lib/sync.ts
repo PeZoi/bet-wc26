@@ -1,0 +1,331 @@
+import { createAdminClient } from '@/lib/supabase/server';
+
+/**
+ * Translate round name from API-Football to Vietnamese.
+ */
+function translateRound(round: string): string {
+  if (round.toLowerCase().includes('group stage')) {
+    const parts = round.split('-');
+    if (parts.length > 1) {
+      return `Vòng bảng - Lượt ${parts[1].trim()}`;
+    }
+    return 'Vòng bảng';
+  }
+  if (round.toLowerCase().includes('round of 32')) return 'Vòng 1/32';
+  if (round.toLowerCase().includes('round of 16')) return 'Vòng 1/16';
+  if (round.toLowerCase().includes('quarter-finals')) return 'Tứ kết';
+  if (round.toLowerCase().includes('semi-finals')) return 'Bán kết';
+  if (round.toLowerCase().includes('final')) return 'Chung kết';
+  return round;
+}
+
+/**
+ * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
+ */
+export async function syncMatchesHelper() {
+  const supabase = createAdminClient();
+
+  // LAYER 1: worldcup26.ir (Open-source free API)
+  try {
+    console.log('Fetching matches from worldcup26.ir...');
+
+    // 1. Fetch Teams for Flags mapping
+    const teamsResponse = await fetch('https://worldcup26.ir/get/teams');
+    if (!teamsResponse.ok) {
+      throw new Error(`Failed to fetch teams from worldcup26.ir: ${teamsResponse.status}`);
+    }
+    const teamsData = await teamsResponse.json();
+    const teamsList = teamsData.teams || [];
+    const teamIdToFlagMap = new Map<string, string>();
+    teamsList.forEach((t: { id: string; flag: string }) => {
+      teamIdToFlagMap.set(t.id, t.flag);
+    });
+
+    // 2. Fetch Games
+    const gamesResponse = await fetch('https://worldcup26.ir/get/games');
+    if (!gamesResponse.ok) {
+      throw new Error(`Failed to fetch games from worldcup26.ir: ${gamesResponse.status}`);
+    }
+    const gamesData = await gamesResponse.json();
+    const gamesList = gamesData.games || [];
+
+    if (gamesList.length === 0) {
+      throw new Error('worldcup26.ir returned empty games list');
+    }
+
+    const translateStage = (game: { type: string; group: string }): string => {
+      const type = game.type;
+      if (type === 'group') {
+        return `Bảng ${game.group}`;
+      }
+      if (type === 'r32') return 'Vòng 1/32';
+      if (type === 'r16') return 'Vòng 1/16';
+      if (type === 'qf') return 'Tứ kết';
+      if (type === 'sf') return 'Bán kết';
+      if (type === 'third') return 'Tranh hạng ba';
+      if (type === 'final') return 'Chung kết';
+      return type;
+    };
+
+    const parseLocalDate = (localDateStr: string): string => {
+      try {
+        const [datePart, timePart] = localDateStr.split(' ');
+        const [month, day, year] = datePart.split('/');
+        const [hour, minute] = timePart.split(':');
+        const date = new Date(Date.UTC(
+          parseInt(year, 10),
+          parseInt(month, 10) - 1,
+          parseInt(day, 10),
+          parseInt(hour, 10),
+          parseInt(minute, 10)
+        ));
+        return date.toISOString();
+      } catch {
+        return new Date().toISOString();
+      }
+    };
+
+    const matchesToUpsert = gamesList.map((game: {
+      id: string;
+      home_team_id: string;
+      away_team_id: string;
+      home_team_name_en: string;
+      away_team_name_en: string;
+      home_score: string;
+      away_score: string;
+      finished: string;
+      time_elapsed: string;
+      type: string;
+      group: string;
+      local_date: string;
+      home_team_label?: string;
+      away_team_label?: string;
+    }) => {
+      const id = parseInt(game.id, 10);
+      const isFinished = game.finished === 'TRUE';
+      const isNotStarted = game.time_elapsed === 'notstarted';
+      const status = isFinished ? 'FT' : (isNotStarted ? 'NS' : 'LIVE');
+
+      let home_team = game.home_team_name_en;
+      let away_team = game.away_team_name_en;
+      let home_logo = '';
+      let away_logo = '';
+
+      if (game.home_team_id === '0' || !home_team) {
+        home_team = game.home_team_label || 'TBD';
+        home_logo = 'https://flagcdn.com/w160/un.png';
+      } else {
+        home_logo = teamIdToFlagMap.get(game.home_team_id) || 'https://flagcdn.com/w160/un.png';
+      }
+
+      if (game.away_team_id === '0' || !away_team) {
+        away_team = game.away_team_label || 'TBD';
+        away_logo = 'https://flagcdn.com/w160/un.png';
+      } else {
+        away_logo = teamIdToFlagMap.get(game.away_team_id) || 'https://flagcdn.com/w160/un.png';
+      }
+
+      // Convert flag URL to higher resolution / cleaner w160 flag CDN format if they are standard flagcdn
+      if (home_logo.includes('flagcdn.com')) {
+        home_logo = home_logo.replace('/w80/', '/w160/');
+      }
+      if (away_logo.includes('flagcdn.com')) {
+        away_logo = away_logo.replace('/w80/', '/w160/');
+      }
+
+      return {
+        id,
+        home_team,
+        away_team,
+        home_logo,
+        away_logo,
+        match_time: parseLocalDate(game.local_date),
+        stage: translateStage(game),
+        home_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.home_score, 10) : null,
+        away_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.away_score, 10) : null,
+        status,
+        updated_at: new Date().toISOString()
+      };
+    });
+
+    if (matchesToUpsert.length > 0) {
+      // Clean up any matches that are not in this new API response (e.g. old mock matches 1001-1012)
+      const apiIds = matchesToUpsert.map((m: { id: number }) => m.id);
+      const { data: currentMatches } = await supabase
+        .from('matches')
+        .select('id');
+      
+      if (currentMatches && currentMatches.length > 0) {
+        const idsToDelete = (currentMatches as { id: number }[])
+          .map((m) => m.id)
+          .filter((id) => !apiIds.includes(id));
+        
+        if (idsToDelete.length > 0) {
+          console.log(`Deleting ${idsToDelete.length} outdated/mock matches from database...`);
+          await supabase
+            .from('matches')
+            .delete()
+            .in('id', idsToDelete);
+        }
+      }
+
+      const { error } = await supabase
+        .from('matches')
+        .upsert(matchesToUpsert, { onConflict: 'id' });
+      if (error) throw error;
+      console.log(`Successfully synced ${matchesToUpsert.length} matches from worldcup26.ir`);
+      return matchesToUpsert.length;
+    }
+  } catch (error) {
+    console.error('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', error);
+  }
+
+  // LAYER 2: API-Football/API-Sports (Fallback if key configured)
+  const apiKey = process.env.RAPIDAPI_KEY;
+  const apiHost = process.env.RAPIDAPI_HOST || 'api-football-v1.p.rapidapi.com';
+
+  if (apiKey && apiKey !== 'your_rapidapi_key_here') {
+    try {
+      console.log('Fetching fallback matches from API-Football...');
+      const isRapidApi = apiHost.toLowerCase().includes('rapidapi');
+      const basePath = isRapidApi ? '/v3' : '';
+      const response = await fetch(
+        `https://${apiHost}${basePath}/fixtures?league=1&season=2026`,
+        {
+          method: 'GET',
+          headers: {
+            'x-rapidapi-key': apiKey,
+            'x-apisports-key': apiKey,
+            'x-rapidapi-host': apiHost,
+          },
+        }
+      );
+
+      if (!response.ok) {
+        throw new Error(`API response failed with status ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      interface ApiFixtureItem {
+        fixture: {
+          id: number;
+          date: string;
+          status: {
+            short: 'NS' | 'LIVE' | 'FT' | string;
+          };
+        };
+        teams: {
+          home: {
+            name: string;
+            logo: string;
+          };
+          away: {
+            name: string;
+            logo: string;
+          };
+        };
+        goals: {
+          home: number | null;
+          away: number | null;
+        };
+        league: {
+          round: string;
+        };
+      }
+
+      if (data.response && Array.isArray(data.response) && data.response.length > 0) {
+        const matchesToUpsert = (data.response as ApiFixtureItem[]).map((item) => ({
+          id: item.fixture.id,
+          home_team: item.teams.home.name,
+          away_team: item.teams.away.name,
+          home_logo: item.teams.home.logo,
+          away_logo: item.teams.away.logo,
+          match_time: item.fixture.date,
+          stage: translateRound(item.league.round),
+          home_score: item.goals.home,
+          away_score: item.goals.away,
+          status: item.fixture.status.short,
+          updated_at: new Date().toISOString()
+        }));
+
+        // Clean up any matches that are not in this new API response (e.g. old mock matches 1001-1012)
+        const apiIds = matchesToUpsert.map((m: { id: number }) => m.id);
+        const { data: currentMatches } = await supabase
+          .from('matches')
+          .select('id');
+        
+        if (currentMatches && currentMatches.length > 0) {
+          const idsToDelete = (currentMatches as { id: number }[])
+            .map((m) => m.id)
+            .filter((id) => !apiIds.includes(id));
+          
+          if (idsToDelete.length > 0) {
+            console.log(`Deleting ${idsToDelete.length} outdated/mock matches from database...`);
+            await supabase
+              .from('matches')
+              .delete()
+              .in('id', idsToDelete);
+          }
+        }
+
+        const { error } = await supabase
+          .from('matches')
+          .upsert(matchesToUpsert, { onConflict: 'id' });
+
+        if (error) throw error;
+        console.log(`Successfully synced ${matchesToUpsert.length} matches from fallback API-Football`);
+        return matchesToUpsert.length;
+      }
+    } catch (fallbackError) {
+      console.error('API-Football fallback failed:', fallbackError);
+    }
+  }
+
+  // If we reach here, it means both worldcup26.ir and API-Football failed
+  throw new Error('Sync failed: Both API sources (worldcup26.ir and API-Football) are currently unavailable.');
+}
+
+/**
+ * Sync scores of active matches.
+ * Calling syncMatchesHelper(false) does a complete update of matches and their scores,
+ * so we can reuse it to keep it extremely simple.
+ */
+export async function syncScoresHelper() {
+  try {
+    const updatedCount = await syncMatchesHelper();
+    return { success: true, updatedCount };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Error updating scores';
+    return { success: false, message };
+  }
+}
+
+/**
+ * Throttle sync requests to prevent rate limit exhaustion.
+ * Runs sync if the database has not been synced in the last 10 minutes.
+ */
+export async function autoSyncThrottled() {
+  try {
+    const supabase = createAdminClient();
+
+    // Check most recently updated match time
+    const { data } = await supabase
+      .from('matches')
+      .select('updated_at')
+      .order('updated_at', { ascending: false })
+      .limit(1);
+
+    const latestMatch = data?.[0];
+    const lastSync = latestMatch ? new Date(latestMatch.updated_at).getTime() : 0;
+    const now = Date.now();
+
+    // 10 minutes throttle
+    if (now - lastSync > 10 * 60 * 1000) {
+      console.log('Throttled auto-sync triggered...');
+      await syncMatchesHelper();
+    }
+  } catch (error) {
+    console.error('Error during autoSyncThrottled:', error);
+  }
+}
