@@ -7,6 +7,7 @@ import BracketCard from '@/components/bracket-card';
 import PredictionModal from '@/components/prediction-modal';
 import { Search, Filter, RefreshCw, Grid, GitFork } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useDialog } from '@/components/ui/dialog-custom';
 
 interface MatchesListProps {
   initialMatches: Match[];
@@ -20,6 +21,7 @@ export default function MatchesList({
   isLoggedIn
 }: MatchesListProps) {
   const router = useRouter();
+  const { showAlert } = useDialog();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStage, setSelectedStage] = useState<string>('all');
   const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
@@ -57,14 +59,14 @@ export default function MatchesList({
       const res = await fetch('/api/sync-matches');
       const data = await res.json();
       if (data.success) {
-        alert('Đồng bộ lịch thi đấu thành công!');
+        await showAlert('Đồng bộ lịch thi đấu thành công!', { type: 'success', title: 'Thành công' });
         router.refresh();
       } else {
-        alert('Đồng bộ thất bại: ' + data.message);
+        await showAlert('Đồng bộ thất bại: ' + data.message, { type: 'error', title: 'Thất bại' });
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Đã xảy ra lỗi';
-      alert('Lỗi: ' + errMsg);
+      await showAlert('Lỗi: ' + errMsg, { type: 'error', title: 'Lỗi' });
     } finally {
       setIsSyncing(false);
     }

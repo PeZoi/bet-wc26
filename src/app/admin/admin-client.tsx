@@ -5,6 +5,7 @@ import { Match } from '@/types';
 import { updateMatchScoreAdmin } from '@/app/actions';
 import { RefreshCw, Save, Play, Database } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { useDialog } from '@/components/ui/dialog-custom';
 
 interface AdminClientProps {
   initialMatches: Match[];
@@ -16,6 +17,7 @@ type EditScoreState = {
 
 export default function AdminClient({ initialMatches }: AdminClientProps) {
   const router = useRouter();
+  const { showAlert } = useDialog();
   const matches = initialMatches;
   const [syncingMatches, setSyncingMatches] = useState(false);
   const [syncingScores, setSyncingScores] = useState(false);
@@ -61,14 +63,14 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
       const res = await fetch(endpoint);
       const data = await res.json();
       if (data.success) {
-        alert(`Thành công: ${data.message} (${data.source})`);
+        await showAlert(`Thành công: ${data.message} (${data.source})`, { type: 'success', title: 'Thành công' });
         router.refresh();
       } else {
-        alert(`Thất bại: ${data.message}`);
+        await showAlert(`Thất bại: ${data.message}`, { type: 'error', title: 'Thất bại' });
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Lỗi không xác định';
-      alert(`Lỗi đồng bộ: ${errMsg}`);
+      await showAlert(`Lỗi đồng bộ: ${errMsg}`, { type: 'error', title: 'Lỗi đồng bộ' });
     } finally {
       setSyncingMatches(false);
     }
@@ -80,14 +82,14 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
       const res = await fetch('/api/sync-scores');
       const data = await res.json();
       if (data.success) {
-        alert(data.message);
+        await showAlert(data.message, { type: 'success', title: 'Cập nhật tỉ số' });
         router.refresh();
       } else {
-        alert(`Thất bại: ${data.message}`);
+        await showAlert(`Thất bại: ${data.message}`, { type: 'error', title: 'Thất bại' });
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Lỗi không xác định';
-      alert(`Lỗi đồng bộ tỉ số: ${errMsg}`);
+      await showAlert(`Lỗi đồng bộ tỉ số: ${errMsg}`, { type: 'error', title: 'Lỗi đồng bộ' });
     } finally {
       setSyncingScores(false);
     }
@@ -105,14 +107,14 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
       );
 
       if (res.success) {
-        alert(res.message);
+        await showAlert(res.message, { type: 'success', title: 'Cập nhật tỉ số' });
         router.refresh();
       } else {
-        alert(`Lỗi: ${res.message}`);
+        await showAlert(`Lỗi: ${res.message}`, { type: 'error', title: 'Lỗi' });
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Lỗi không xác định';
-      alert(`Lỗi: ${errMsg}`);
+      await showAlert(`Lỗi: ${errMsg}`, { type: 'error', title: 'Lỗi' });
     } finally {
       setUpdatingMatchId(null);
     }
