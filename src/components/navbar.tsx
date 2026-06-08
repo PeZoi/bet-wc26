@@ -15,6 +15,7 @@ import {
 	LogOut,
 	Users,
 	Table,
+	MessageSquare,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 
@@ -62,10 +63,11 @@ export default function Navbar() {
 
 	const navItems = [
 		{ name: "Bảng tin", href: "/dashboard", icon: LayoutDashboard },
-		{ name: "Lịch thi đấu", href: "/matches", icon: Calendar },
+		{ name: "Lịch đấu", href: "/matches", icon: Calendar },
 		{ name: "Đội bóng", href: "/teams", icon: Users },
 		{ name: "BXH Bảng", href: "/group-standings", icon: Table },
 		{ name: "Xếp hạng", href: "/leaderboard", icon: Trophy },
+		{ name: "Chat", href: "/chat", icon: MessageSquare },
 		{ name: "Thể lệ", href: "/rules", icon: FileText },
 	];
 
@@ -96,7 +98,7 @@ export default function Navbar() {
 					</div>
 
 					{/* Desktop Navigation */}
-					<div className='hidden md:flex items-center gap-6'>
+					<div className='hidden md:flex items-center gap-1 lg:gap-2.5 xl:gap-4'>
 						{navItems.map((item) => {
 							const Icon = item.icon;
 							const active = isActive(item.href);
@@ -104,13 +106,13 @@ export default function Navbar() {
 								<Link
 									key={item.href}
 									href={item.href}
-									className={`flex items-center gap-2 text-sm font-medium transition-colors duration-200 py-1.5 px-3 rounded-full ${
+									className={`flex items-center gap-1.5 text-xs font-bold transition-all duration-200 py-1.5 px-2.5 rounded-full whitespace-nowrap ${
 										active
 											? "bg-primary/10 text-primary border border-primary/20"
 											: "text-muted-foreground hover:text-foreground hover:bg-white/5"
 									}`}
 								>
-									<Icon className='h-4 w-4' />
+									<Icon className='h-3.5 w-3.5 flex-shrink-0' />
 									{item.name}
 								</Link>
 							);
@@ -118,12 +120,12 @@ export default function Navbar() {
 					</div>
 
 					{/* Authentication & User Panel */}
-					<div className='hidden md:flex items-center gap-4'>
+					<div className='hidden md:flex items-center gap-3 flex-shrink-0'>
 						{loading ? (
 							<div className='h-8 w-24 animate-pulse rounded-full bg-white/5' />
 						) : user ? (
-							<div className='flex items-center gap-3'>
-								<div className='flex items-center gap-2.5 rounded-full bg-card border border-white/5 py-1 pl-1 pr-3.5'>
+							<div className='flex items-center gap-2'>
+								<div className='flex items-center gap-2 rounded-full bg-card border border-white/5 py-1 pl-1 pr-2.5'>
 									<img
 										src={
 											user.user_metadata?.avatar_url ||
@@ -132,27 +134,27 @@ export default function Navbar() {
 										alt={
 											user.user_metadata?.full_name || "User avatar"
 										}
-										className='h-7 w-7 rounded-full object-cover bg-white/10'
+										className='h-6.5 w-6.5 rounded-full object-cover bg-white/10'
 										referrerPolicy='no-referrer'
 									/>
-									<span className='text-xs font-medium max-w-[120px] truncate text-foreground'>
+									<span className='text-[11px] font-bold max-w-[80px] truncate text-foreground'>
 										{user.user_metadata?.full_name || "User"}
 									</span>
 								</div>
 								<button
 									onClick={handleLogout}
-									className='rounded-full bg-white/5 p-2 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors'
+									className='rounded-full bg-white/5 p-2 text-muted-foreground hover:text-white hover:bg-white/10 transition-colors cursor-pointer'
 									title='Đăng xuất'
 								>
-									<LogOut className='h-4 w-4' />
+									<LogOut className='h-3.5 w-3.5' />
 								</button>
 							</div>
 						) : (
 							<button
 								onClick={handleLogin}
-								className='flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-lg shadow-primary/20'
+								className='flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-bold text-primary-foreground hover:bg-primary/90 hover:scale-[1.02] active:scale-[0.98] transition-all duration-200 cursor-pointer shadow-lg shadow-primary/20'
 							>
-								<LogIn className='h-4 w-4' />
+								<LogIn className='h-3.5 w-3.5' />
 								Đăng nhập Google
 							</button>
 						)}

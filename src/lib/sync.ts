@@ -1,4 +1,5 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { recalculateAllPendingPoints } from '@/lib/points';
 
 /**
  * Translate round name from API-Football to Vietnamese.
@@ -174,6 +175,10 @@ export async function syncMatchesHelper() {
         .upsert(matchesToUpsert, { onConflict: 'id' });
       if (error) throw error;
       console.log(`Successfully synced ${matchesToUpsert.length} matches from worldcup26.ir`);
+      
+      // Tự động tính điểm cho các dự đoán sau khi đồng bộ dữ liệu trận đấu
+      await recalculateAllPendingPoints();
+
       return matchesToUpsert.length;
     }
   } catch (error) {
@@ -275,6 +280,10 @@ export async function syncMatchesHelper() {
 
         if (error) throw error;
         console.log(`Successfully synced ${matchesToUpsert.length} matches from fallback API-Football`);
+        
+        // Tự động tính điểm cho các dự đoán sau khi đồng bộ dữ liệu trận đấu
+        await recalculateAllPendingPoints();
+
         return matchesToUpsert.length;
       }
     } catch (fallbackError) {

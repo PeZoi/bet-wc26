@@ -3,7 +3,7 @@
 import React, { useState } from 'react';
 import { Match } from '@/types';
 import { updateMatchScoreAdmin } from '@/app/actions';
-import { RefreshCw, Save, Play, Database } from 'lucide-react';
+import { RefreshCw, Save, Play } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/ui/dialog-custom';
 
@@ -56,11 +56,10 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
     });
   };
 
-  const handleSyncMatches = async (useMock = false) => {
+  const handleSyncMatches = async () => {
     setSyncingMatches(true);
     try {
-      const endpoint = useMock ? '/api/sync-matches?mock=true' : '/api/sync-matches';
-      const res = await fetch(endpoint);
+      const res = await fetch('/api/sync-matches');
       const data = await res.json();
       if (data.success) {
         await showAlert(`Thành công: ${data.message} (${data.source})`, { type: 'success', title: 'Thành công' });
@@ -123,28 +122,7 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
   return (
     <div className="space-y-6">
       {/* Synchronization Triggers */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-        {/* Force Mock Seed */}
-        <div className="glass-panel rounded-2xl p-5 border border-white/5 space-y-3 flex flex-col justify-between">
-          <div>
-            <h4 className="text-sm font-bold text-white flex items-center gap-1.5">
-              <Database className="h-4 w-4 text-emerald-400" />
-              Khởi tạo dữ liệu mẫu
-            </h4>
-            <p className="text-[11px] text-muted-foreground mt-1">
-              Ghi đè/Seeding dữ liệu mẫu gồm 12 trận mở màn (không cần cấu hình API Key).
-            </p>
-          </div>
-          <button
-            onClick={() => handleSyncMatches(true)}
-            disabled={syncingMatches}
-            className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-white/5 border border-white/5 text-xs font-bold text-white hover:bg-white/10 py-2.5 transition-colors cursor-pointer disabled:opacity-50"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${syncingMatches ? 'animate-spin' : ''}`} />
-            Seed dữ liệu mẫu
-          </button>
-        </div>
-
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
         {/* Real Fixtures Sync */}
         <div className="glass-panel rounded-2xl p-5 border border-white/5 space-y-3 flex flex-col justify-between">
           <div>
@@ -157,7 +135,7 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
             </p>
           </div>
           <button
-            onClick={() => handleSyncMatches(false)}
+            onClick={() => handleSyncMatches()}
             disabled={syncingMatches}
             className="w-full flex items-center justify-center gap-1.5 rounded-xl bg-primary text-xs font-bold text-primary-foreground hover:bg-primary/95 py-2.5 transition-colors cursor-pointer disabled:opacity-50"
           >

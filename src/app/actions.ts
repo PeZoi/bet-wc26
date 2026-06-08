@@ -2,6 +2,7 @@
 
 import { createClient, createAdminClient } from '@/lib/supabase/server';
 import { revalidatePath } from 'next/cache';
+import { recalculateAllPendingPoints } from '@/lib/points';
 
 /**
  * Submit or update a user's prediction for a match.
@@ -114,6 +115,14 @@ export async function updateMatchScoreAdmin(
     if (updateError) {
       console.error('Admin match update error:', updateError);
       return { success: false, message: 'Lỗi cập nhật trận đấu: ' + updateError.message };
+    }
+
+    // Tự động tính điểm và cập nhật bảng xếp hạng nếu trận đấu kết thúc
+    if (status === 'FT') {
+      const calcResult = await recalculateAllPendingPoints();
+      if (!calcResult.success) {
+        console.error('Lỗi tự động tính điểm:', calcResult.message);
+      }
     }
 
     revalidatePath('/dashboard');

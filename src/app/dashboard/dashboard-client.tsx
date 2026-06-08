@@ -182,13 +182,38 @@ export default function DashboardClient({
           </div>
 
           {nextMatch ? (
-            <div className="flex flex-col items-center py-1">
-              <div className="flex items-center gap-4">
-                <span className="text-xs font-bold text-white">{nextMatch.home_team}</span>
-                <span className="text-xs text-muted-foreground font-medium">vs</span>
-                <span className="text-xs font-bold text-white">{nextMatch.away_team}</span>
+            <div className="flex flex-col items-center py-2 space-y-3">
+              <div className="flex items-center justify-center gap-3 w-full">
+                {/* Đội nhà */}
+                <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
+                  <span className="text-sm font-bold text-white truncate text-right">
+                    {nextMatch.home_team}
+                  </span>
+                  <img
+                    src={nextMatch.home_logo}
+                    alt={nextMatch.home_team}
+                    className="h-5 w-7.5 object-cover rounded border border-white/10 bg-white/5 flex-shrink-0 shadow-sm"
+                  />
+                </div>
+
+                {/* VS */}
+                <span className="text-xs text-muted-foreground font-bold flex-shrink-0">vs</span>
+
+                {/* Đội khách */}
+                <div className="flex items-center gap-2 flex-1 justify-start min-w-0">
+                  <img
+                    src={nextMatch.away_logo}
+                    alt={nextMatch.away_team}
+                    className="h-5 w-7.5 object-cover rounded border border-white/10 bg-white/5 flex-shrink-0 shadow-sm"
+                  />
+                  <span className="text-sm font-bold text-white truncate text-left">
+                    {nextMatch.away_team}
+                  </span>
+                </div>
               </div>
-              <div className="mt-3 font-mono text-2xl font-extrabold text-yellow-400 tracking-tight">
+              
+              {/* Đếm ngược */}
+              <div className="font-mono text-2xl font-extrabold text-yellow-400 tracking-tight">
                 {countdown}
               </div>
             </div>
