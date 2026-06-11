@@ -5,7 +5,7 @@ import Navbar from '@/components/navbar';
 import MatchCard from '@/components/match-card';
 import { Trophy, ArrowRight, ShieldCheck, Flame, Star } from 'lucide-react';
 import { autoSyncThrottled } from '@/lib/sync';
-import { Match, Profile } from '@/types';
+import { Match, Profile, Prediction } from '@/types';
 import { User } from '@supabase/supabase-js';
 
 export const dynamic = 'force-dynamic';
@@ -13,8 +13,10 @@ export const dynamic = 'force-dynamic';
 export default async function LandingPage() {
   let matches: Match[] = [];
   let profiles: Profile[] = [];
+  let predictions: Prediction[] = [];
   let user: User | null = null;
   let isLoggedIn = false;
+  let isAdmin = false;
 
   try {
     // Automatically trigger throttled sync (max once per 10 minutes)
@@ -25,6 +27,10 @@ export default async function LandingPage() {
     user = currentUser;
     isLoggedIn = !!user;
 
+    const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
+    const adminEmails = adminEmailsEnv.split(',').map((email) => email.trim().toLowerCase());
+    isAdmin = user?.email ? adminEmails.includes(user.email.toLowerCase()) : false;
+
     // Fetch upcoming matches
     const { data: dbMatches } = await supabase
       .from('matches')
@@ -34,6 +40,15 @@ export default async function LandingPage() {
     
     matches = dbMatches || [];
 
+    // Fetch user predictions if logged in
+    if (user) {
+      const { data: dbPredictions } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('user_id', user.id);
+      predictions = dbPredictions || [];
+    }
+
     // Fetch top 3 leaderboards
     const { data: dbProfiles } = await supabase
       .from('profiles')
@@ -41,7 +56,7 @@ export default async function LandingPage() {
       .order('points', { ascending: false })
       .order('exact_scores_count', { ascending: false })
       .limit(3);
-
+    
     profiles = dbProfiles || [];
   } catch (error) {
     console.error('Database connection failed:', error);
@@ -72,7 +87,7 @@ export default async function LandingPage() {
                 World Cup 2026 Prediction Hub
               </div>
               <h1 className="text-4xl font-extrabold tracking-tight sm:text-6xl text-white leading-tight">
-                Dự Đoán Tỉ Số <br />
+                Dự Đoán Kết Quả <br />
                 <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent">
                   Leo Hạng Cùng Bạn Bè
                 </span>
@@ -162,14 +177,19 @@ export default async function LandingPage() {
           </div>
 
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {matches.map((match) => (
-              <div key={match.id} className="h-full">
-                <MatchCard
-                  match={match}
-                  isLoggedIn={isLoggedIn}
-                />
-              </div>
-            ))}
+            {matches.map((match) => {
+              const userPred = predictions.find((p) => p.match_id === match.id);
+              return (
+                <div key={match.id} className="h-full">
+                  <MatchCard
+                    match={match}
+                    userPrediction={userPred}
+                    isLoggedIn={isLoggedIn}
+                    isAdmin={isAdmin}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>

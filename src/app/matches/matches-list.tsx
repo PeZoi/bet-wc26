@@ -5,6 +5,7 @@ import { Match, Prediction } from '@/types';
 import MatchCard from '@/components/match-card';
 import BracketCard from '@/components/bracket-card';
 import PredictionModal from '@/components/prediction-modal';
+import { translateTeamName } from '@/lib/translator';
 import { Search, Filter, RefreshCw, Grid, GitFork } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/ui/dialog-custom';
@@ -13,12 +14,14 @@ interface MatchesListProps {
   initialMatches: Match[];
   initialPredictions: Prediction[];
   isLoggedIn: boolean;
+  isAdmin?: boolean;
 }
 
 export default function MatchesList({
   initialMatches,
   initialPredictions,
-  isLoggedIn
+  isLoggedIn,
+  isAdmin = false
 }: MatchesListProps) {
   const router = useRouter();
   const { showAlert } = useDialog();
@@ -87,6 +90,8 @@ export default function MatchesList({
     const searchMatch =
       match.home_team.toLowerCase().includes(searchTerm.toLowerCase()) ||
       match.away_team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      translateTeamName(match.home_team).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      translateTeamName(match.away_team).toLowerCase().includes(searchTerm.toLowerCase()) ||
       match.stage.toLowerCase().includes(searchTerm.toLowerCase());
 
     // Check if opponents are fully determined (not placeholders like TBD, Winner, Runner-up, etc.)
@@ -227,6 +232,7 @@ export default function MatchesList({
                   userPrediction={predictionMap.get(match.id)}
                   onPredictClick={handlePredictClick}
                   isLoggedIn={isLoggedIn}
+                  isAdmin={isAdmin}
                 />
               </div>
             ))}

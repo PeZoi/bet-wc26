@@ -11,7 +11,7 @@ const outfit = Outfit({
 
 export const metadata: Metadata = {
   title: 'World Cup 2026 Predictions | Football Hub',
-  description: 'Dự đoán tỉ số các trận đấu World Cup 2026, tính điểm và leo hạng cùng bạn bè. Sân chơi dự đoán bóng đá phi thương mại.',
+  description: 'Dự đoán kết quả các trận đấu World Cup 2026 (1X2, Handicap), tính điểm và leo hạng cùng bạn bè. Sân chơi dự đoán bóng đá phi thương mại.',
   keywords: 'world cup 2026, dự đoán bóng đá, cá độ bóng đá vui, prediction wc 2026',
   icons: {
     icon: '/wc26.webp',

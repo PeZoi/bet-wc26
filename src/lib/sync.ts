@@ -20,6 +20,25 @@ function translateRound(round: string): string {
   return round;
 }
 
+const STADIUM_OFFSETS: Record<string, number> = {
+  '1': -6, // Estadio Azteca (Mexico City) -> CST (UTC-6)
+  '2': -6, // Estadio Akron (Guadalajara) -> CST (UTC-6)
+  '3': -6, // Estadio BBVA (Monterrey) -> CST (UTC-6)
+  '4': -5, // AT&T Stadium (Dallas) -> CDT (UTC-5)
+  '5': -5, // NRG Stadium (Houston) -> CDT (UTC-5)
+  '6': -5, // GEHA Field at Arrowhead Stadium (Kansas City) -> CDT (UTC-5)
+  '7': -4, // Mercedes-Benz Stadium (Atlanta) -> EDT (UTC-4)
+  '8': -4, // Hard Rock Stadium (Miami) -> EDT (UTC-4)
+  '9': -4, // Gillette Stadium (Boston) -> EDT (UTC-4)
+  '10': -4, // Lincoln Financial Field (Philadelphia) -> EDT (UTC-4)
+  '11': -4, // MetLife Stadium (New York/New Jersey) -> EDT (UTC-4)
+  '12': -4, // BMO Field (Toronto) -> EDT (UTC-4)
+  '13': -7, // BC Place (Vancouver) -> PDT (UTC-7)
+  '14': -7, // Lumen Field (Seattle) -> PDT (UTC-7)
+  '15': -7, // Levi's Stadium (San Francisco) -> PDT (UTC-7)
+  '16': -7, // SoFi Stadium (Los Angeles) -> PDT (UTC-7)
+};
+
 /**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
  */
@@ -68,11 +87,14 @@ export async function syncMatchesHelper() {
       return type;
     };
 
-    const parseLocalDate = (localDateStr: string): string => {
+    const parseLocalDate = (localDateStr: string, stadiumId: string): string => {
       try {
         const [datePart, timePart] = localDateStr.split(' ');
         const [month, day, year] = datePart.split('/');
         const [hour, minute] = timePart.split(':');
+        
+        const offset = STADIUM_OFFSETS[stadiumId] ?? -5; // Mặc định là -5 (CDT) nếu không tìm thấy
+        
         const date = new Date(Date.UTC(
           parseInt(year, 10),
           parseInt(month, 10) - 1,
@@ -80,6 +102,10 @@ export async function syncMatchesHelper() {
           parseInt(hour, 10),
           parseInt(minute, 10)
         ));
+        
+        // Điều chỉnh múi giờ về UTC thực tế: UTC = Local - Offset
+        date.setUTCHours(date.getUTCHours() - offset);
+        
         return date.toISOString();
       } catch {
         return new Date().toISOString();
@@ -99,6 +125,7 @@ export async function syncMatchesHelper() {
       type: string;
       group: string;
       local_date: string;
+      stadium_id: string;
       home_team_label?: string;
       away_team_label?: string;
     }) => {
@@ -140,7 +167,7 @@ export async function syncMatchesHelper() {
         away_team,
         home_logo,
         away_logo,
-        match_time: parseLocalDate(game.local_date),
+        match_time: parseLocalDate(game.local_date, game.stadium_id),
         stage: translateStage(game),
         home_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.home_score, 10) : null,
         away_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.away_score, 10) : null,

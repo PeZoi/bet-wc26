@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import {
 	Trophy,
@@ -16,14 +16,19 @@ import {
 	Users,
 	Table,
 	MessageSquare,
+	RefreshCw,
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
+import { useDialog } from "@/components/ui/dialog-custom";
 
 export default function Navbar() {
 	const pathname = usePathname();
+	const router = useRouter();
+	const { showAlert } = useDialog();
 	const [user, setUser] = useState<User | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+	const [syncing, setSyncing] = useState(false);
 	const supabase = createClient();
 
 	useEffect(() => {
@@ -59,6 +64,26 @@ export default function Navbar() {
 	const handleLogout = async () => {
 		await supabase.auth.signOut();
 		window.location.href = "/";
+	};
+
+	const handleSyncScores = async () => {
+		if (syncing) return;
+		setSyncing(true);
+		try {
+			const res = await fetch("/api/sync-scores");
+			const data = await res.json();
+			if (data.success) {
+				router.refresh();
+				await showAlert("Cập nhật tỉ số thực tế thành công!", { type: "success", title: "Thành công" });
+			} else {
+				await showAlert("Cập nhật tỉ số thất bại: " + data.message, { type: "error", title: "Thất bại" });
+			}
+		} catch (error) {
+			console.error("Lỗi đồng bộ tỉ số:", error);
+			await showAlert("Có lỗi xảy ra khi cập nhật tỉ số.", { type: "error", title: "Lỗi" });
+		} finally {
+			setSyncing(false);
+		}
 	};
 
 	const navItems = [
@@ -121,6 +146,16 @@ export default function Navbar() {
 
 					{/* Authentication & User Panel */}
 					<div className='hidden md:flex items-center gap-3 flex-shrink-0'>
+						<button
+							onClick={handleSyncScores}
+							disabled={syncing}
+							className="flex items-center gap-1.5 rounded-full border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary py-1.5 px-3.5 text-xs font-bold transition-all duration-200 cursor-pointer disabled:opacity-50"
+							title="Đồng bộ tỉ số mới nhất từ API"
+						>
+							<RefreshCw className={`h-3 w-3 ${syncing ? 'animate-spin' : ''}`} />
+							{syncing ? 'Đang cập nhật...' : 'Cập nhật tỉ số'}
+						</button>
+
 						{loading ? (
 							<div className='h-8 w-24 animate-pulse rounded-full bg-white/5' />
 						) : user ? (
@@ -199,7 +234,19 @@ export default function Navbar() {
 						);
 					})}
 
-					<div className='pt-4 border-t border-white/10'>
+					<div className='pt-4 border-t border-white/10 space-y-3'>
+						<button
+							onClick={() => {
+								setMobileMenuOpen(false);
+								handleSyncScores();
+							}}
+							disabled={syncing}
+							className="flex w-full items-center justify-center gap-2 rounded-lg border border-primary/20 bg-primary/5 hover:bg-primary/10 text-primary py-2.5 text-sm font-semibold disabled:opacity-50"
+						>
+							<RefreshCw className={`h-4 w-4 ${syncing ? 'animate-spin' : ''}`} />
+							{syncing ? 'Đang cập nhật...' : 'Cập nhật tỉ số'}
+						</button>
+
 						{loading ? (
 							<div className='h-10 w-full animate-pulse rounded-lg bg-white/5' />
 						) : user ? (

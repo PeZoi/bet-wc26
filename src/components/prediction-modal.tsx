@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { Match, Prediction } from '@/types';
 import { submitPrediction } from '@/app/actions';
+import { translateTeamName } from '@/lib/translator';
+import TeamName from '@/components/team-name';
 import { X, ChevronUp, ChevronDown, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -21,8 +23,7 @@ export default function PredictionModal({
   userPrediction,
   onSuccess
 }: PredictionModalProps) {
-  const [homeScore, setHomeScore] = useState<number>(0);
-  const [awayScore, setAwayScore] = useState<number>(0);
+  const [predictionChoice, setPredictionChoice] = useState<'home' | 'away' | 'draw' | null>(null);
   const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
   const [errorMsg, setErrorMsg] = useState<string>('');
   const [successMsg, setSuccessMsg] = useState<string>('');
@@ -33,32 +34,39 @@ export default function PredictionModal({
   
   if (currentMatchId !== prevMatchId) {
     setPrevMatchId(currentMatchId);
-    setHomeScore(userPrediction?.predicted_home_score ?? 0);
-    setAwayScore(userPrediction?.predicted_away_score ?? 0);
+    setPredictionChoice(userPrediction?.prediction_choice ?? null);
     setErrorMsg('');
     setSuccessMsg('');
   }
 
   if (!match) return null;
 
-  const handleIncrement = (team: 'home' | 'away') => {
-    if (team === 'home') setHomeScore(prev => prev + 1);
-    else setAwayScore(prev => prev + 1);
+  const getHandicapText = (team: 'home' | 'away') => {
+    const hTeam = match.handicap_team || 'none';
+    const hVal = Number(match.handicap_value || 0);
+    if (hTeam === 'none' || hVal === 0) return '';
+    if (hTeam === team) {
+      return `(Chấp ${hVal})`;
+    } else {
+      return `(Được chấp ${hVal})`;
+    }
   };
 
-  const handleDecrement = (team: 'home' | 'away') => {
-    if (team === 'home') setHomeScore(prev => Math.max(0, prev - 1));
-    else setAwayScore(prev => Math.max(0, prev - 1));
-  };
+  const isHandicapMatch = (match.handicap_team && match.handicap_team !== 'none' && Number(match.handicap_value || 0) > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (!predictionChoice) {
+      setErrorMsg('Vui lòng chọn kết quả để dự đoán.');
+      return;
+    }
+    
     setIsSubmitting(true);
     setErrorMsg('');
     setSuccessMsg('');
 
     try {
-      const res = await submitPrediction(match.id, homeScore, awayScore);
+      const res = await submitPrediction(match.id, predictionChoice);
       if (res.success) {
         setSuccessMsg(res.message || 'Lưu thành công!');
         setTimeout(() => {
@@ -98,8 +106,8 @@ export default function PredictionModal({
             className="w-full max-w-md glass-panel rounded-2xl p-6 relative overflow-hidden border border-white/10"
           >
             {/* Header */}
-            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-6">
-              <h3 className="text-lg font-bold text-white">Dự đoán tỉ số</h3>
+            <div className="flex items-center justify-between border-b border-white/5 pb-4 mb-5">
+              <h3 className="text-lg font-bold text-white">Dự đoán kết quả</h3>
               <button
                 onClick={onClose}
                 className="p-1 rounded-full text-muted-foreground hover:text-foreground hover:bg-white/5 transition-all"
@@ -109,94 +117,73 @@ export default function PredictionModal({
             </div>
 
             {/* Match info header */}
-            <div className="text-center mb-6">
+            <div className="text-center mb-5 flex flex-col items-center gap-1">
               <span className="text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
                 {match.stage}
               </span>
+              {isHandicapMatch ? (
+                <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2.5 py-1 rounded-full mt-1.5 uppercase tracking-wider">
+                  Kèo: {match.handicap_team === 'home' ? translateTeamName(match.home_team) : translateTeamName(match.away_team)} chấp {match.handicap_value} trái
+                </span>
+              ) : (
+                <span className="text-[10px] font-bold text-muted-foreground bg-white/5 border border-white/5 px-2.5 py-1 rounded-full mt-1.5 uppercase tracking-wider">
+                  Dự đoán đội giành chiến thắng
+                </span>
+              )}
             </div>
 
             {/* Prediction Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="flex items-center justify-between gap-4 py-2">
-                {/* Home Team Input */}
-                <div className="flex flex-col items-center flex-1">
-                  <img
-                    src={match.home_logo}
-                    alt={`${match.home_team} flag`}
-                    className="h-10 w-14 object-cover rounded shadow bg-white/5"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.home_team;
-                    }}
-                  />
-                  <span className="mt-2 text-sm font-bold text-foreground text-center line-clamp-1">
-                    {match.home_team}
-                  </span>
+              <div className="flex flex-col gap-4">
+                {/* 2 Choices Mode (Home or Away only - No Draw) */}
+                <div className="grid grid-cols-2 gap-4">
+                  {/* Home Button */}
+                  <button
+                    type="button"
+                    onClick={() => setPredictionChoice('home')}
+                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                      predictionChoice === 'home'
+                        ? 'bg-primary/15 border-primary text-primary shadow-sm shadow-primary/10'
+                        : 'bg-white/5 border-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    <img
+                      src={match.home_logo}
+                      alt=""
+                      className="h-8 w-12 object-cover rounded shadow-md mb-3"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.home_team;
+                      }}
+                    />
+                    <TeamName name={match.home_team} className="font-bold text-sm max-w-full justify-center" />
+                  </button>
 
-                  {/* Increment/Decrement Controls */}
-                  <div className="flex items-center mt-4 bg-white/5 border border-white/5 rounded-xl overflow-hidden p-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDecrement('home')}
-                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg active:scale-95 transition-all"
-                    >
-                      <ChevronDown className="h-5 w-5" />
-                    </button>
-                    <span className="px-4 font-mono text-xl font-bold text-white min-w-[32px] text-center">
-                      {homeScore}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleIncrement('home')}
-                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg active:scale-95 transition-all"
-                    >
-                      <ChevronUp className="h-5 w-5" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Separator */}
-                <div className="text-2xl font-mono text-muted-foreground font-extrabold pb-8">:</div>
-
-                {/* Away Team Input */}
-                <div className="flex flex-col items-center flex-1">
-                  <img
-                    src={match.away_logo}
-                    alt={`${match.away_team} flag`}
-                    className="h-10 w-14 object-cover rounded shadow bg-white/5"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.away_team;
-                    }}
-                  />
-                  <span className="mt-2 text-sm font-bold text-foreground text-center line-clamp-1">
-                    {match.away_team}
-                  </span>
-
-                  {/* Increment/Decrement Controls */}
-                  <div className="flex items-center mt-4 bg-white/5 border border-white/5 rounded-xl overflow-hidden p-1">
-                    <button
-                      type="button"
-                      onClick={() => handleDecrement('away')}
-                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg active:scale-95 transition-all"
-                    >
-                      <ChevronDown className="h-5 w-5" />
-                    </button>
-                    <span className="px-4 font-mono text-xl font-bold text-white min-w-[32px] text-center">
-                      {awayScore}
-                    </span>
-                    <button
-                      type="button"
-                      onClick={() => handleIncrement('away')}
-                      className="p-2 text-muted-foreground hover:text-foreground hover:bg-white/5 rounded-lg active:scale-95 transition-all"
-                    >
-                      <ChevronUp className="h-5 w-5" />
-                    </button>
-                  </div>
+                  {/* Away Button */}
+                  <button
+                    type="button"
+                    onClick={() => setPredictionChoice('away')}
+                    className={`flex flex-col items-center justify-center p-5 rounded-2xl border transition-all duration-200 cursor-pointer ${
+                      predictionChoice === 'away'
+                        ? 'bg-primary/15 border-primary text-primary shadow-sm shadow-primary/10'
+                        : 'bg-white/5 border-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 hover:border-white/10'
+                    }`}
+                  >
+                    <img
+                      src={match.away_logo}
+                      alt=""
+                      className="h-8 w-12 object-cover rounded shadow-md mb-3"
+                      onError={(e) => {
+                        (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/initials/svg?seed=' + match.away_team;
+                      }}
+                    />
+                    <TeamName name={match.away_team} className="font-bold text-sm max-w-full justify-center" />
+                  </button>
                 </div>
               </div>
 
               {/* Status messages */}
               {errorMsg && (
-                <div className="text-center text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 py-2 px-3 rounded-lg">
+                <div className="text-center text-xs font-semibold text-red-400 bg-red-500/10 border border-red-500/20 py-2 px-3 rounded-lg animate-shake">
                   {errorMsg}
                 </div>
               )}

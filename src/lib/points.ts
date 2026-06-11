@@ -157,7 +157,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
     // 2. Lấy danh sách các trận đấu đã kết thúc (FT) và có tỉ số hợp lệ
     const { data: finishedMatches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, home_score, away_score')
+      .select('id, home_score, away_score, handicap_team, handicap_value')
       .eq('status', 'FT');
 
     if (matchesError) {
@@ -175,7 +175,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
         // Lấy toàn bộ các dự đoán cho trận đấu này
         const { data: predictions, error: predsError } = await supabase
           .from('predictions')
-          .select('id, user_id, predicted_home_score, predicted_away_score, points_earned')
+          .select('id, user_id, prediction_choice, points_earned')
           .eq('match_id', match.id);
 
         if (predsError) {
@@ -186,21 +186,37 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
         if (!predictions || predictions.length === 0) continue;
 
         const predictionsToUpdate = [];
+        const handicapTeam = match.handicap_team || 'none';
+        const handicapVal = Number(match.handicap_value || 0);
 
         for (const p of predictions) {
           let points = 0;
 
-          // Quy tắc 1: Đoán trúng chính xác tỉ số -> 3 điểm
-          if (p.predicted_home_score === match.home_score && p.predicted_away_score === match.away_score) {
-            points = 3;
-          }
-          // Quy tắc 2: Đoán đúng kết quả (thắng/thua/hoà) nhưng sai tỉ số -> 1 điểm
-          else if (
-            (p.predicted_home_score > p.predicted_away_score && match.home_score > match.away_score) ||
-            (p.predicted_home_score < p.predicted_away_score && match.home_score < match.away_score) ||
-            (p.predicted_home_score === p.predicted_away_score && match.home_score === match.away_score)
-          ) {
-            points = 1;
+          if (handicapTeam === 'none' || handicapVal === 0) {
+            // Cược Châu Âu (1X2)
+            if (p.prediction_choice === 'home' && match.home_score > match.away_score) {
+              points = 3;
+            } else if (p.prediction_choice === 'away' && match.home_score < match.away_score) {
+              points = 3;
+            } else if (p.prediction_choice === 'draw' && match.home_score === match.away_score) {
+              points = 3;
+            }
+          } else {
+            // Cược chấp Handicap
+            let diff = 0;
+            if (handicapTeam === 'home') {
+              diff = (match.home_score - handicapVal) - match.away_score;
+            } else if (handicapTeam === 'away') {
+              diff = match.home_score - (match.away_score - handicapVal);
+            } else {
+              diff = match.home_score - match.away_score;
+            }
+
+            if (diff > 0 && p.prediction_choice === 'home') {
+              points = 3;
+            } else if (diff < 0 && p.prediction_choice === 'away') {
+              points = 3;
+            }
           }
 
           // Chỉ cập nhật nếu điểm mới tính khác điểm cũ trong DB (hoặc điểm cũ đang là null)
@@ -209,8 +225,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
               id: p.id,
               user_id: p.user_id,
               match_id: match.id,
-              predicted_home_score: p.predicted_home_score,
-              predicted_away_score: p.predicted_away_score,
+              prediction_choice: p.prediction_choice,
               points_earned: points
             });
             affectedUserIds.add(p.user_id);

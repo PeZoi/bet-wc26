@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 import { Match, Prediction } from '@/types';
+import { translateTeamName } from '@/lib/translator';
+import TeamName from '@/components/team-name';
 import { Edit3, Lock, Trophy } from 'lucide-react';
 
 interface BracketCardProps {
@@ -35,6 +37,21 @@ export default function BracketCard({
     }, 0);
     return () => clearTimeout(timer);
   }, [match]);
+
+  const getChoiceLabel = () => {
+    if (!userPrediction || !match) return '';
+    const choice = userPrediction.prediction_choice;
+    const homeName = translateTeamName(match.home_team);
+    const awayName = translateTeamName(match.away_team);
+
+    if (choice === 'home') {
+      return homeName.length > 8 ? `${homeName.substring(0, 6)}...` : homeName;
+    }
+    if (choice === 'away') {
+      return awayName.length > 8 ? `${awayName.substring(0, 6)}...` : awayName;
+    }
+    return 'Hòa';
+  };
 
   const isFinished = match?.status === 'FT';
 
@@ -83,13 +100,12 @@ export default function BracketCard({
                     isFinished && !homeWinner ? 'opacity-40' : ''
                   }`}
                 />
-                <span
-                  className={`text-xs truncate text-white ${
+                <TeamName 
+                  name={match.home_team} 
+                  className={`text-xs text-white max-w-full ${
                     isFinished ? (homeWinner ? 'font-bold text-white' : 'text-white/40') : 'font-medium'
                   }`}
-                >
-                  {match.home_team}
-                </span>
+                />
               </>
             ) : (
               <span className="text-xs text-muted-foreground/60 italic truncate">{placeholderHome}</span>
@@ -118,13 +134,12 @@ export default function BracketCard({
                     isFinished && !awayWinner ? 'opacity-40' : ''
                   }`}
                 />
-                <span
-                  className={`text-xs truncate text-white ${
+                <TeamName 
+                  name={match.away_team} 
+                  className={`text-xs text-white max-w-full ${
                     isFinished ? (awayWinner ? 'font-bold text-white' : 'text-white/40') : 'font-medium'
                   }`}
-                >
-                  {match.away_team}
-                </span>
+                />
               </>
             ) : (
               <span className="text-xs text-muted-foreground/60 italic truncate">{placeholderAway}</span>
@@ -148,7 +163,7 @@ export default function BracketCard({
           {userPrediction ? (
             <div className="flex items-center gap-1.5 text-[10px] font-bold text-primary">
               <Trophy className="h-3 w-3" />
-              <span>Dự đoán: {userPrediction.predicted_home_score} - {userPrediction.predicted_away_score}</span>
+              <span>Chọn: {getChoiceLabel()}</span>
               {userPrediction.points_earned !== null && (
                 <span className="text-yellow-500 font-extrabold ml-1">+{userPrediction.points_earned}đ</span>
               )}

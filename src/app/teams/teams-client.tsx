@@ -2,6 +2,8 @@
 
 import React, { useState } from 'react';
 import { Search, Globe, Users, Trophy } from 'lucide-react';
+import { translateTeamName } from '@/lib/translator';
+import TeamName from '@/components/team-name';
 
 export interface Team {
   name: string;
@@ -24,6 +26,7 @@ export default function TeamsClient({ initialTeams }: TeamsClientProps) {
   const filteredTeams = initialTeams.filter((team) => {
     const matchesSearch =
       team.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      translateTeamName(team.name).toLowerCase().includes(searchTerm.toLowerCase()) ||
       team.group.toLowerCase().includes(searchTerm.toLowerCase());
     
     const matchesGroup = selectedGroup === 'All' || team.group === selectedGroup;
@@ -102,9 +105,10 @@ export default function TeamsClient({ initialTeams }: TeamsClientProps) {
               </div>
 
               {/* Team Name */}
-              <h3 className="font-bold text-sm text-white group-hover:text-primary transition-colors line-clamp-1 px-1">
-                {team.name}
-              </h3>
+              <TeamName 
+                name={team.name} 
+                className="font-bold text-sm text-white group-hover:text-primary transition-colors max-w-full justify-center px-1" 
+              />
 
               {/* Group badge */}
               <span className="mt-2.5 inline-flex items-center justify-center px-2 py-0.5 rounded-full text-[10px] font-extrabold tracking-wider bg-white/5 text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary transition-all uppercase border border-white/5 group-hover:border-primary/20">

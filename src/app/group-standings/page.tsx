@@ -2,7 +2,8 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import { autoSyncThrottled } from '@/lib/sync';
-import { Match } from '@/types';
+import GroupStandingsClient from './group-standings-client';
+import { Match, Prediction } from '@/types';
 import { Globe } from 'lucide-react';
 
 export const dynamic = 'force-dynamic';
@@ -27,12 +28,32 @@ interface GroupStanding {
 
 export default async function GroupStandingsPage() {
   let groups: GroupStanding[] = [];
+  let matches: Match[] = [];
+  let predictions: Prediction[] = [];
+  let isLoggedIn = false;
+  let isAdmin = false;
 
   try {
     // Automatically trigger throttled sync (max once per 10 minutes)
     await autoSyncThrottled();
 
     const supabase = await createClient();
+
+    // Fetch auth status & role
+    const { data: { user } } = await supabase.auth.getUser();
+    isLoggedIn = !!user;
+    if (user) {
+      const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
+      const adminEmails = adminEmailsEnv.split(',').map((email) => email.trim().toLowerCase());
+      isAdmin = user.email ? adminEmails.includes(user.email.toLowerCase()) : false;
+
+      // Fetch user predictions
+      const { data: dbPredictions } = await supabase
+        .from('predictions')
+        .select('*')
+        .eq('user_id', user.id);
+      predictions = dbPredictions || [];
+    }
     
     // Fetch all matches to compute standings
     const { data: dbMatches, error: matchesError } = await supabase
@@ -40,7 +61,7 @@ export default async function GroupStandingsPage() {
       .select('*')
       .order('match_time', { ascending: true });
 
-    const matches: Match[] = matchesError || !dbMatches ? [] : dbMatches;
+    matches = matchesError || !dbMatches ? [] : dbMatches;
 
     const standingsMap = new Map<string, Map<string, TeamStanding>>();
 
@@ -180,121 +201,13 @@ export default async function GroupStandingsPage() {
 
           {/* Grid of groups */}
           {groups.length > 0 ? (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {groups.map((group) => (
-                <div
-                  key={group.groupLetter}
-                  className="glass-panel overflow-hidden rounded-2xl border border-white/5 bg-card/25 shadow-lg flex flex-col"
-                >
-                  {/* Group header */}
-                  <div className="bg-gradient-to-r from-primary/10 to-transparent px-4 py-3 border-b border-white/5 flex items-center justify-between">
-                    <span className="font-extrabold text-sm text-white tracking-wide">
-                      BẢNG {group.groupLetter}
-                    </span>
-                    <span className="text-[10px] text-muted-foreground/80 font-bold uppercase">
-                      World Cup 2026
-                    </span>
-                  </div>
-
-                  {/* Table */}
-                  <div className="overflow-x-auto">
-                    <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="border-b border-white/5 text-muted-foreground/60 font-semibold">
-                          <th className="py-2.5 px-3 text-center w-8">#</th>
-                          <th className="py-2.5 px-2">Đội</th>
-                          <th className="py-2.5 px-2 text-center w-10" title="Trận đã đấu">Tr</th>
-                          <th className="py-2.5 px-2 text-center w-16" title="Thắng - Hòa - Thua">T-H-B</th>
-                          <th className="py-2.5 px-2 text-center w-12" title="Hiệu số bàn thắng">HS</th>
-                          <th className="py-2.5 px-3 text-center w-10 font-bold text-foreground">Điểm</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {group.teams.map((team, idx) => {
-                          const rank = idx + 1;
-                          
-                          // Determine rank color class
-                          let rankCircleClass = 'bg-white/5 text-muted-foreground';
-                          let rowBorderClass = 'border-l-2 border-transparent';
-                          let textClass = 'text-muted-foreground/80';
-
-                          if (rank <= 2) {
-                            rankCircleClass = 'bg-emerald-500/10 text-emerald-400 font-bold';
-                            rowBorderClass = 'border-l-2 border-emerald-500';
-                            textClass = 'text-white font-medium';
-                          } else if (rank === 3) {
-                            rankCircleClass = 'bg-blue-500/10 text-blue-400 font-bold';
-                            rowBorderClass = 'border-l-2 border-blue-500';
-                            textClass = 'text-white/90';
-                          } else {
-                            rankCircleClass = 'bg-red-500/5 text-red-500/50';
-                            rowBorderClass = 'border-l-2 border-red-500/20';
-                            textClass = 'text-muted-foreground/45';
-                          }
-
-                          return (
-                            <tr
-                              key={team.teamName}
-                              className={`border-b border-white/5 hover:bg-white/[0.02] transition-colors ${rowBorderClass}`}
-                            >
-                              {/* Rank */}
-                              <td className="py-3 px-3 text-center">
-                                <span className={`inline-flex items-center justify-center w-5 h-5 rounded-full text-[10px] ${rankCircleClass}`}>
-                                  {rank}
-                                </span>
-                              </td>
-
-                              {/* Team Name + Flag */}
-                              <td className="py-3 px-2">
-                                <div className="flex items-center gap-2">
-                                  <div className="w-5 h-3.5 flex-shrink-0 overflow-hidden rounded shadow-sm border border-white/10 bg-white/5">
-                                    {team.logo ? (
-                                      <img
-                                        src={team.logo}
-                                        alt={team.teamName}
-                                        className="w-full h-full object-cover"
-                                        loading="lazy"
-                                      />
-                                    ) : (
-                                      <Globe className="w-3.5 h-3.5 text-muted-foreground/50" />
-                                    )}
-                                  </div>
-                                  <span className={`truncate max-w-[90px] sm:max-w-[120px] ${textClass}`}>
-                                    {team.teamName}
-                                  </span>
-                                </div>
-                              </td>
-
-                              {/* Played */}
-                              <td className="py-3 px-2 text-center text-muted-foreground/90 font-medium">
-                                {team.played}
-                              </td>
-
-                              {/* Won-Drawn-Lost */}
-                              <td className="py-3 px-2 text-center text-muted-foreground/60 font-mono">
-                                {team.won}-{team.drawn}-{team.lost}
-                              </td>
-
-                              {/* GD */}
-                              <td className={`py-3 px-2 text-center font-semibold font-mono ${
-                                team.gd > 0 ? 'text-emerald-500' : team.gd < 0 ? 'text-rose-500/70' : 'text-muted-foreground/60'
-                              }`}>
-                                {team.gd > 0 ? `+${team.gd}` : team.gd}
-                              </td>
-
-                              {/* Points */}
-                              <td className="py-3 px-3 text-center font-bold text-white text-sm bg-white/[0.01]">
-                                {team.points}
-                              </td>
-                            </tr>
-                          );
-                        })}
-                      </tbody>
-                    </table>
-                  </div>
-                </div>
-              ))}
-            </div>
+            <GroupStandingsClient 
+              initialGroups={groups} 
+              allMatches={matches} 
+              predictions={predictions}
+              isLoggedIn={isLoggedIn}
+              isAdmin={isAdmin}
+            />
           ) : (
             <div className="flex flex-col items-center justify-center py-20 text-center bg-card/10 border border-white/5 rounded-2xl backdrop-blur-sm">
               <Globe className="h-10 w-10 text-muted-foreground/35 mb-3 animate-pulse" />

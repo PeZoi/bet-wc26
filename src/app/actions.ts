@@ -9,8 +9,7 @@ import { recalculateAllPendingPoints } from '@/lib/points';
  */
 export async function submitPrediction(
   matchId: number,
-  homeScore: number,
-  awayScore: number
+  predictionChoice: 'home' | 'away' | 'draw'
 ) {
   try {
     const supabase = await createClient();
@@ -18,7 +17,7 @@ export async function submitPrediction(
     // Check session
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) {
-      return { success: false, message: 'Bạn cần đăng nhập để dự đoán tỉ số.' };
+      return { success: false, message: 'Bạn cần đăng nhập để dự đoán.' };
     }
 
     // Fetch match details to verify time lock
@@ -51,8 +50,7 @@ export async function submitPrediction(
         {
           user_id: user.id,
           match_id: matchId,
-          predicted_home_score: homeScore,
-          predicted_away_score: awayScore,
+          prediction_choice: predictionChoice,
           created_at: new Date().toISOString()
         },
         { onConflict: 'user_id,match_id' }
@@ -80,7 +78,9 @@ export async function updateMatchScoreAdmin(
   matchId: number,
   homeScore: number,
   awayScore: number,
-  status: 'NS' | 'LIVE' | 'FT'
+  status: 'NS' | 'LIVE' | 'FT',
+  handicapTeam: 'home' | 'away' | 'none',
+  handicapValue: number
 ) {
   try {
     const supabase = await createClient();
@@ -102,12 +102,29 @@ export async function updateMatchScoreAdmin(
     // Use admin client to bypass RLS for match updates
     const adminSupabase = createAdminClient();
 
+    // Check if match is already finished to prevent updates
+    const { data: match, error: fetchError } = await adminSupabase
+      .from('matches')
+      .select('status')
+      .eq('id', matchId)
+      .single();
+
+    if (fetchError || !match) {
+      return { success: false, message: 'Không tìm thấy trận đấu.' };
+    }
+
+    if (match.status === 'FT') {
+      return { success: false, message: 'Trận đấu đã kết thúc, không thể chỉnh sửa.' };
+    }
+
     const { error: updateError } = await adminSupabase
       .from('matches')
       .update({
         home_score: homeScore,
         away_score: awayScore,
         status: status,
+        handicap_team: handicapTeam,
+        handicap_value: handicapValue,
         updated_at: new Date().toISOString()
       })
       .eq('id', matchId);
@@ -128,7 +145,7 @@ export async function updateMatchScoreAdmin(
     revalidatePath('/dashboard');
     revalidatePath('/matches');
     revalidatePath('/leaderboard');
-    return { success: true, message: 'Cập nhật tỉ số trận đấu thành công!' };
+    return { success: true, message: 'Cập nhật trận đấu thành công!' };
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : 'Đã xảy ra lỗi hệ thống';
     console.error('updateMatchScoreAdmin action error:', error);

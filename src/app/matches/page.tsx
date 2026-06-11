@@ -13,6 +13,7 @@ export default async function MatchesPage() {
 	let predictions: Prediction[] = [];
 	let user: User | null = null;
 	let isLoggedIn = false;
+	let isAdmin = false;
 
 	try {
 		// Automatically trigger throttled sync (max once per 10 minutes)
@@ -24,6 +25,10 @@ export default async function MatchesPage() {
 		} = await supabase.auth.getUser();
 		user = currentUser;
 		isLoggedIn = !!user;
+
+		const adminEmailsEnv = process.env.ADMIN_EMAILS || '';
+		const adminEmails = adminEmailsEnv.split(',').map((email) => email.trim().toLowerCase());
+		isAdmin = user?.email ? adminEmails.includes(user.email.toLowerCase()) : false;
 
 		// Fetch all matches
 		const { data: dbMatches, error: matchesError } = await supabase
@@ -72,6 +77,7 @@ export default async function MatchesPage() {
 						initialMatches={matches}
 						initialPredictions={predictions}
 						isLoggedIn={isLoggedIn}
+						isAdmin={isAdmin}
 					/>
 				</div>
 			</main>
