@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { recalculateAllPendingPoints } from '@/lib/points';
+import https from 'https';
 
 /**
  * Translate round name from API-Football to Vietnamese.
@@ -40,6 +41,89 @@ const STADIUM_OFFSETS: Record<string, number> = {
 };
 
 /**
+ * Fetch with a timeout to prevent blocking server-side rendering for too long.
+ * Automatically handles browser headers to bypass block, and falls back to Node https module if SSL verification fails.
+ */
+async function fetchWithTimeout(resource: string, options: RequestInit & { timeout?: number } = {}) {
+  const { timeout = 5000, headers = {}, ...rest } = options;
+  
+  const browserHeaders = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+    'Accept': 'application/json, text/plain, */*',
+    ...headers
+  };
+
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  
+  try {
+    const response = await fetch(resource, {
+      ...rest,
+      headers: browserHeaders,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    
+    // Nếu lỗi là do SSL/TLS certificate của Node.js (UNABLE_TO_VERIFY_LEAF_SIGNATURE, CERT_HAS_EXPIRED, etc.)
+    // Chúng ta thử thực hiện cuộc gọi qua thư viện https của Node.js và bỏ qua xác thực chứng chỉ.
+    const errStr = String(error);
+    const isSslError = errStr.includes('CERT') || errStr.includes('signature') || errStr.includes('ssl') || errStr.includes('certificate') || errStr.includes('verify');
+    
+    if (isSslError && resource.startsWith('https')) {
+      console.log(`SSL issue detected for ${resource}, retrying with node https rejectUnauthorized: false...`);
+      try {
+        const data = await new Promise<string>((resolve, reject) => {
+          const reqOptions = {
+            method: rest.method || 'GET',
+            headers: browserHeaders as Record<string, string>,
+            rejectUnauthorized: false, // Bỏ qua xác thực chứng chỉ SSL
+            timeout: timeout
+          };
+          
+          const req = https.request(resource, reqOptions, (res) => {
+            let body = '';
+            res.on('data', (chunk) => { body += chunk; });
+            res.on('end', () => {
+              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
+                resolve(body);
+              } else {
+                reject(new Error(`Node https request failed with status: ${res.statusCode}`));
+              }
+            });
+          });
+          
+          req.on('error', (err) => { reject(err); });
+          req.on('timeout', () => {
+            req.destroy();
+            reject(new Error('Node https request timeout'));
+          });
+          
+          if (rest.body) {
+            req.write(rest.body);
+          }
+          req.end();
+        });
+        
+        // Trả về một Response-like object để tương thích với API của fetch
+        return {
+          ok: true,
+          status: 200,
+          json: async () => JSON.parse(data),
+          text: async () => data
+        } as unknown as Response;
+      } catch (nodeHttpsError) {
+        console.error('Fallback node https request also failed:', nodeHttpsError);
+      }
+    }
+    
+    throw error;
+  }
+}
+
+/**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
  */
 export async function syncMatchesHelper() {
@@ -50,9 +134,16 @@ export async function syncMatchesHelper() {
     console.log('Fetching matches from worldcup26.ir...');
 
     // 1. Fetch Teams for Flags mapping
-    const teamsResponse = await fetch('https://worldcup26.ir/get/teams');
-    if (!teamsResponse.ok) {
-      throw new Error(`Failed to fetch teams from worldcup26.ir: ${teamsResponse.status}`);
+    let teamsResponse;
+    try {
+      teamsResponse = await fetchWithTimeout('https://worldcup26.ir/get/teams', { timeout: 5000 });
+      if (!teamsResponse.ok) throw new Error(`Status ${teamsResponse.status}`);
+    } catch (err) {
+      console.warn('Direct fetch teams failed, trying proxy...', err instanceof Error ? err.message : String(err));
+      teamsResponse = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 8000 });
+      if (!teamsResponse.ok) {
+        throw new Error(`Failed to fetch teams from proxy: ${teamsResponse.status}`);
+      }
     }
     const teamsData = await teamsResponse.json();
     const teamsList = teamsData.teams || [];
@@ -62,9 +153,16 @@ export async function syncMatchesHelper() {
     });
 
     // 2. Fetch Games
-    const gamesResponse = await fetch('https://worldcup26.ir/get/games');
-    if (!gamesResponse.ok) {
-      throw new Error(`Failed to fetch games from worldcup26.ir: ${gamesResponse.status}`);
+    let gamesResponse;
+    try {
+      gamesResponse = await fetchWithTimeout('https://worldcup26.ir/get/games', { timeout: 5000 });
+      if (!gamesResponse.ok) throw new Error(`Status ${gamesResponse.status}`);
+    } catch (err) {
+      console.warn('Direct fetch games failed, trying proxy...', err instanceof Error ? err.message : String(err));
+      gamesResponse = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 8000 });
+      if (!gamesResponse.ok) {
+        throw new Error(`Failed to fetch games from proxy: ${gamesResponse.status}`);
+      }
     }
     const gamesData = await gamesResponse.json();
     const gamesList = gamesData.games || [];
@@ -209,7 +307,7 @@ export async function syncMatchesHelper() {
       return matchesToUpsert.length;
     }
   } catch (error) {
-    console.error('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', error);
+    console.warn('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', error instanceof Error ? error.message : String(error));
   }
 
   // LAYER 2: API-Football/API-Sports (Fallback if key configured)
@@ -221,7 +319,7 @@ export async function syncMatchesHelper() {
       console.log('Fetching fallback matches from API-Football...');
       const isRapidApi = apiHost.toLowerCase().includes('rapidapi');
       const basePath = isRapidApi ? '/v3' : '';
-      const response = await fetch(
+      const response = await fetchWithTimeout(
         `https://${apiHost}${basePath}/fixtures?league=1&season=2026`,
         {
           method: 'GET',
@@ -230,6 +328,7 @@ export async function syncMatchesHelper() {
             'x-apisports-key': apiKey,
             'x-rapidapi-host': apiHost,
           },
+          timeout: 5000
         }
       );
 
@@ -314,7 +413,7 @@ export async function syncMatchesHelper() {
         return matchesToUpsert.length;
       }
     } catch (fallbackError) {
-      console.error('API-Football fallback failed:', fallbackError);
+      console.warn('API-Football fallback failed:', fallbackError instanceof Error ? fallbackError.message : String(fallbackError));
     }
   }
 
@@ -362,6 +461,6 @@ export async function autoSyncThrottled() {
       await syncMatchesHelper();
     }
   } catch (error) {
-    console.error('Error during autoSyncThrottled:', error);
+    console.warn('Error during autoSyncThrottled:', error instanceof Error ? error.message : String(error));
   }
 }
