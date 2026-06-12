@@ -1,5 +1,6 @@
 import { createAdminClient } from '@/lib/supabase/server';
 import { recalculateAllPendingPoints } from '@/lib/points';
+import axios from 'axios';
 import https from 'https';
 
 /**
@@ -40,113 +41,47 @@ const STADIUM_OFFSETS: Record<string, number> = {
   '16': -7, // SoFi Stadium (Los Angeles) -> PDT (UTC-7)
 };
 
-/**
- * Fetch with a timeout to prevent blocking server-side rendering for too long.
- * Automatically handles browser headers to bypass block, and falls back to Node https module if SSL verification fails.
- */
-async function fetchWithTimeout(resource: string, options: RequestInit & { timeout?: number } = {}) {
-  const { timeout = 5000, headers = {}, ...rest } = options;
-  
-  const browserHeaders = {
+// Axios instance optimized for API sync: timeout 5s, browser User-Agent, and bypassed SSL checks
+const axiosInstance = axios.create({
+  timeout: 5000,
+  headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-    'Accept': 'application/json, text/plain, */*',
-    ...headers
-  };
-
-  const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
-  
-  try {
-    const response = await fetch(resource, {
-      ...rest,
-      headers: browserHeaders,
-      signal: controller.signal
-    });
-    clearTimeout(id);
-    return response;
-  } catch (error) {
-    clearTimeout(id);
-    
-    // Nếu lỗi là do SSL/TLS certificate của Node.js (UNABLE_TO_VERIFY_LEAF_SIGNATURE, CERT_HAS_EXPIRED, etc.)
-    // Chúng ta thử thực hiện cuộc gọi qua thư viện https của Node.js và bỏ qua xác thực chứng chỉ.
-    const errStr = String(error);
-    const isSslError = errStr.includes('CERT') || errStr.includes('signature') || errStr.includes('ssl') || errStr.includes('certificate') || errStr.includes('verify');
-    
-    if (isSslError && resource.startsWith('https')) {
-      console.log(`SSL issue detected for ${resource}, retrying with node https rejectUnauthorized: false...`);
-      try {
-        const data = await new Promise<string>((resolve, reject) => {
-          const reqOptions = {
-            method: rest.method || 'GET',
-            headers: browserHeaders as Record<string, string>,
-            rejectUnauthorized: false, // Bỏ qua xác thực chứng chỉ SSL
-            timeout: timeout
-          };
-          
-          const req = https.request(resource, reqOptions, (res) => {
-            let body = '';
-            res.on('data', (chunk) => { body += chunk; });
-            res.on('end', () => {
-              if (res.statusCode && res.statusCode >= 200 && res.statusCode < 300) {
-                resolve(body);
-              } else {
-                reject(new Error(`Node https request failed with status: ${res.statusCode}`));
-              }
-            });
-          });
-          
-          req.on('error', (err) => { reject(err); });
-          req.on('timeout', () => {
-            req.destroy();
-            reject(new Error('Node https request timeout'));
-          });
-          
-          if (rest.body) {
-            req.write(rest.body);
-          }
-          req.end();
-        });
-        
-        // Trả về một Response-like object để tương thích với API của fetch
-        return {
-          ok: true,
-          status: 200,
-          json: async () => JSON.parse(data),
-          text: async () => data
-        } as unknown as Response;
-      } catch (nodeHttpsError) {
-        console.error('Fallback node https request also failed:', nodeHttpsError);
-      }
-    }
-    
-    throw error;
-  }
-}
+    'Accept': 'application/json, text/plain, */*'
+  },
+  httpsAgent: new https.Agent({
+    rejectUnauthorized: false // Bỏ qua xác thực chứng chỉ SSL (tối quan trọng cho domain .ir trên local Node.js)
+  })
+});
 
 /**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
  */
 export async function syncMatchesHelper() {
   const supabase = createAdminClient();
+  let layer1Error = '';
 
   // LAYER 1: worldcup26.ir (Open-source free API)
   try {
-    console.log('Fetching matches from worldcup26.ir...');
+    console.log('Fetching matches from worldcup26.ir via Axios...');
 
     // 1. Fetch Teams for Flags mapping
     let teamsResponse;
     try {
-      teamsResponse = await fetchWithTimeout('https://worldcup26.ir/get/teams', { timeout: 5000 });
-      if (!teamsResponse.ok) throw new Error(`Status ${teamsResponse.status}`);
+      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams');
     } catch (err) {
       console.warn('Direct fetch teams failed, trying proxy...', err instanceof Error ? err.message : String(err));
-      teamsResponse = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 8000 });
-      if (!teamsResponse.ok) {
-        throw new Error(`Failed to fetch teams from proxy: ${teamsResponse.status}`);
+      // Fallback proxy nếu cả mạng local bị chặn hoàn toàn
+      teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 8000 });
+    }
+    let teamsData = teamsResponse.data;
+    if (typeof teamsData === 'string') {
+      try {
+        teamsData = JSON.parse(teamsData);
+      } catch (e) {
+        console.error('Failed to parse teams proxy JSON:', e);
       }
     }
-    const teamsData = await teamsResponse.json();
-    const teamsList = teamsData.teams || [];
+    const teamsList = teamsData?.teams || [];
     const teamIdToFlagMap = new Map<string, string>();
     teamsList.forEach((t: { id: string; flag: string }) => {
       teamIdToFlagMap.set(t.id, t.flag);
@@ -155,17 +90,21 @@ export async function syncMatchesHelper() {
     // 2. Fetch Games
     let gamesResponse;
     try {
-      gamesResponse = await fetchWithTimeout('https://worldcup26.ir/get/games', { timeout: 5000 });
-      if (!gamesResponse.ok) throw new Error(`Status ${gamesResponse.status}`);
+      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games');
     } catch (err) {
       console.warn('Direct fetch games failed, trying proxy...', err instanceof Error ? err.message : String(err));
-      gamesResponse = await fetchWithTimeout('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 8000 });
-      if (!gamesResponse.ok) {
-        throw new Error(`Failed to fetch games from proxy: ${gamesResponse.status}`);
+      gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 8000 });
+    }
+
+    let gamesData = gamesResponse.data;
+    if (typeof gamesData === 'string') {
+      try {
+        gamesData = JSON.parse(gamesData);
+      } catch (e) {
+        console.error('Failed to parse games proxy JSON:', e);
       }
     }
-    const gamesData = await gamesResponse.json();
-    const gamesList = gamesData.games || [];
+    const gamesList = gamesData?.games || [];
 
     if (gamesList.length === 0) {
       throw new Error('worldcup26.ir returned empty games list');
@@ -226,6 +165,8 @@ export async function syncMatchesHelper() {
       stadium_id: string;
       home_team_label?: string;
       away_team_label?: string;
+      home_scorers?: string | null;
+      away_scorers?: string | null;
     }) => {
       const id = parseInt(game.id, 10);
       const isFinished = game.finished === 'TRUE';
@@ -270,6 +211,8 @@ export async function syncMatchesHelper() {
         home_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.home_score, 10) : null,
         away_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.away_score, 10) : null,
         status,
+        home_scorers: game.home_scorers || null,
+        away_scorers: game.away_scorers || null,
         updated_at: new Date().toISOString()
       };
     });
@@ -306,8 +249,19 @@ export async function syncMatchesHelper() {
 
       return matchesToUpsert.length;
     }
-  } catch (error) {
-    console.warn('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', error instanceof Error ? error.message : String(error));
+  } catch (error: any) {
+    const getErrorMessage = (err: any): string => {
+      if (!err) return 'Unknown error';
+      if (err.response) {
+        return `API Error ${err.response.status}: ${typeof err.response.data === 'object' ? JSON.stringify(err.response.data) : String(err.response.data)}`;
+      }
+      if (err.request) {
+        return `Network Error (No response): ${err.message || err.code || 'Timeout/Blocked'}`;
+      }
+      return err.message || String(err);
+    };
+    layer1Error = getErrorMessage(error);
+    console.warn('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', layer1Error);
   }
 
   // LAYER 2: API-Football/API-Sports (Fallback if key configured)
@@ -319,24 +273,19 @@ export async function syncMatchesHelper() {
       console.log('Fetching fallback matches from API-Football...');
       const isRapidApi = apiHost.toLowerCase().includes('rapidapi');
       const basePath = isRapidApi ? '/v3' : '';
-      const response = await fetchWithTimeout(
+      
+      const response = await axiosInstance.get(
         `https://${apiHost}${basePath}/fixtures?league=1&season=2026`,
         {
-          method: 'GET',
           headers: {
             'x-rapidapi-key': apiKey,
             'x-apisports-key': apiKey,
             'x-rapidapi-host': apiHost,
-          },
-          timeout: 5000
+          }
         }
       );
 
-      if (!response.ok) {
-        throw new Error(`API response failed with status ${response.status}`);
-      }
-
-      const data = await response.json();
+      const data = response.data;
 
       interface ApiFixtureItem {
         fixture: {
@@ -418,7 +367,7 @@ export async function syncMatchesHelper() {
   }
 
   // If we reach here, it means both worldcup26.ir and API-Football failed
-  throw new Error('Sync failed: Both API sources (worldcup26.ir and API-Football) are currently unavailable.');
+  throw new Error(`Sync failed. worldcup26.ir error: ${layer1Error || 'Unknown'}`);
 }
 
 /**

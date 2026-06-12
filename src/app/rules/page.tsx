@@ -27,48 +27,48 @@ export default function RulesPage() {
             </h2>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {/* Exact Score */}
+              {/* Win Prediction */}
               <div className="bg-emerald-500/5 border border-emerald-500/20 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 -mr-3 -mt-3 text-emerald-400/10">
                   <Star className="h-20 w-20 fill-current" />
                 </div>
                 <div className="inline-flex p-2 rounded-xl bg-emerald-500/10 text-emerald-400 text-sm font-bold">
-                  Chính Xác Tỉ Số
+                  Thắng Kèo / Thắng Trận
                 </div>
                 <h3 className="text-3xl font-extrabold font-mono text-emerald-400">+3 điểm</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Đoán đúng chính xác tỉ số của cả hai đội.
+                  Đoán đúng đội thắng kèo sau khi cộng/trừ tỷ lệ chấp Handicap (hoặc đoán đúng đội thắng nếu không chấp).
                   <br />
-                  <span className="italic text-[10px]">Ví dụ: Đoán 2-1 và kết quả thực tế là 2-1.</span>
+                  <span className="italic text-[10px]">Ví dụ: Bắt đội nhà chấp 0.5, tỷ số là 1-0 &rarr; Thắng kèo.</span>
                 </p>
               </div>
 
-              {/* Correct Outcome */}
+              {/* Draw Prediction */}
               <div className="bg-cyan-500/5 border border-cyan-500/20 rounded-2xl p-5 space-y-3 relative overflow-hidden">
                 <div className="absolute top-0 right-0 -mr-3 -mt-3 text-cyan-400/10">
                   <Award className="h-20 w-20 fill-current" />
                 </div>
                 <div className="inline-flex p-2 rounded-xl bg-cyan-500/10 text-cyan-400 text-sm font-bold">
-                  Đúng Kết Quả
+                  Hòa Kèo / Hòa Trận
                 </div>
                 <h3 className="text-3xl font-extrabold font-mono text-cyan-400">+1 điểm</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Đoán đúng đội thắng/thua hoặc hòa nhưng sai tỉ số cụ thể.
+                  Kết quả sau khi tính tỷ lệ chấp Handicap là Hòa (hoặc trận đấu không chấp kết thúc với tỷ số Hòa).
                   <br />
-                  <span className="italic text-[10px]">Ví dụ: Đoán 2-1 nhưng kết quả là 1-0 hoặc 3-1.</span>
+                  <span className="italic text-[10px]">Ví dụ: Bắt đội nhà chấp 1 trái, tỷ số là 1-0 &rarr; Hòa kèo.</span>
                 </p>
               </div>
 
-              {/* Wrong outcome */}
+              {/* Loss / Wrong prediction */}
               <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-5 space-y-3">
                 <div className="inline-flex p-2 rounded-xl bg-white/5 text-muted-foreground text-sm font-bold">
-                  Sai Kết Quả
+                  Thua Kèo / Đoán Sai
                 </div>
                 <h3 className="text-3xl font-extrabold font-mono text-muted-foreground">0 điểm</h3>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Đoán sai hoàn toàn kết quả trận đấu.
+                  Đoán sai đội thắng kèo sau khi cộng/trừ tỷ lệ chấp Handicap (hoặc đoán sai đội thắng).
                   <br />
-                  <span className="italic text-[10px]">Ví dụ: Đoán 2-1 nhưng kết quả là 1-2 hoặc 1-1.</span>
+                  <span className="italic text-[10px]">Ví dụ: Bắt đội nhà chấp 0.5, tỷ số là 1-1 &rarr; Thua kèo.</span>
                 </p>
               </div>
             </div>
@@ -99,8 +99,8 @@ export default function RulesPage() {
                 Nếu có 2 hoặc nhiều thành viên có cùng tổng số điểm, bảng xếp hạng sẽ tính toán dựa trên các chỉ số phụ theo thứ tự ưu tiên sau:
               </p>
               <ol className="text-xs text-muted-foreground space-y-2 list-decimal list-inside leading-relaxed">
-                <li>Tổng số lần đoán <span className="text-emerald-400 font-bold">đúng chính xác tỉ số</span> (+3đ) nhiều hơn.</li>
-                <li>Tổng số lần đoán <span className="text-cyan-400 font-bold">đúng kết quả</span> (+1đ) nhiều hơn.</li>
+                <li>Tổng số lần đoán <span className="text-emerald-400 font-bold">Thắng kèo</span> (+3đ) nhiều hơn.</li>
+                <li>Tổng số lần đoán <span className="text-cyan-400 font-bold">Hòa kèo</span> (+1đ) nhiều hơn.</li>
                 <li>Nếu vẫn bằng nhau, người cập nhật dự đoán sớm hơn sẽ xếp trên.</li>
               </ol>
             </div>

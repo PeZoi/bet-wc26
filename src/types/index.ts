@@ -22,6 +22,8 @@ export interface Match {
   updated_at: string;
   handicap_team?: 'home' | 'away' | 'none' | null;
   handicap_value?: number;
+  home_scorers?: string | null;
+  away_scorers?: string | null;
 }
 
 export interface Prediction {

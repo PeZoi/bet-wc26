@@ -352,6 +352,16 @@ export default function MatchCard({
         )}
       </div>
 
+      {/* Chi tiết trận đấu Link */}
+      <div className="mt-4 border-t border-white/5 pt-3 flex justify-center">
+        <Link
+          href={`/matches/${match.id}`}
+          className="text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
+        >
+          Chi tiết trận đấu & Dự đoán khác →
+        </Link>
+      </div>
+
       {/* Handicap Configuration Dialog (Admin) */}
       <Portal>
         <AnimatePresence>
