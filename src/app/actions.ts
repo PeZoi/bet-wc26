@@ -82,7 +82,8 @@ export async function updateMatchScoreAdmin(
   handicapTeam: 'home' | 'away' | 'none',
   handicapValue: number,
   lossPoints: number = 0,
-  applyScope: 'match' | 'stage' | 'group_stage' = 'match'
+  applyScope: 'match' | 'stage' | 'group_stage' = 'match',
+  drawPoints: number = 0
 ) {
   try {
     const supabase = await createClient();
@@ -121,12 +122,13 @@ export async function updateMatchScoreAdmin(
         .from('matches')
         .update({
           loss_points: lossPoints,
+          draw_points: drawPoints,
           updated_at: new Date().toISOString()
         })
         .eq('stage', match.stage);
 
       if (stageUpdateError) {
-        console.error('Lỗi cập nhật loss_points theo stage:', stageUpdateError);
+        console.error('Lỗi cập nhật loss_points/draw_points theo stage:', stageUpdateError);
       }
     }
     // Áp dụng điểm thua cho toàn bộ các trận Vòng bảng (Group Stage)
@@ -135,12 +137,13 @@ export async function updateMatchScoreAdmin(
         .from('matches')
         .update({
           loss_points: lossPoints,
+          draw_points: drawPoints,
           updated_at: new Date().toISOString()
         })
         .like('stage', 'Bảng %');
 
       if (groupUpdateError) {
-        console.error('Lỗi cập nhật loss_points cho toàn bộ Vòng bảng:', groupUpdateError);
+        console.error('Lỗi cập nhật loss_points/draw_points cho toàn bộ Vòng bảng:', groupUpdateError);
       }
     }
 
@@ -153,6 +156,7 @@ export async function updateMatchScoreAdmin(
         handicap_team: handicapTeam,
         handicap_value: handicapValue,
         loss_points: lossPoints,
+        draw_points: drawPoints,
         updated_at: new Date().toISOString()
       })
       .eq('id', matchId);

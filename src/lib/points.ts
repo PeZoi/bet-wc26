@@ -5,7 +5,7 @@ import { createAdminClient } from '@/lib/supabase/server';
  */
 async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promise<void> {
   console.log(`Cập nhật điểm cho các user bị ảnh hưởng: ${userIds.size} users`);
-  
+
   for (const userId of userIds) {
     // Lấy tất cả dự đoán của user này đã được tính điểm
     const { data: userPreds, error: userPredsError } = await supabase
@@ -52,7 +52,7 @@ async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promis
  */
 async function autoResolveCustomBets(supabase: any, matchId: number, homeScore: number, awayScore: number): Promise<void> {
   console.log(`Tự động phân định kèo cá nhân cho trận đấu ${matchId} (Tỉ số: ${homeScore}-${awayScore})`);
-  
+
   try {
     // Lấy các kèo cá nhân đang ở trạng thái 'accepted' (đang đấu) gắn với trận đấu này
     const { data: bets, error } = await supabase
@@ -96,7 +96,7 @@ async function autoResolveCustomBets(supabase: any, matchId: number, homeScore: 
       // 2. Gửi tin nhắn thông báo tự động vào chat
       const cleanTitle = bet.title.replace(/^\[Prediction:\s*\w+\]\s*/, '');
       const winnerName = isCreatorWon ? (bet.creator?.display_name || 'Người thách đấu') : (bet.challenger?.display_name || 'Người nhận thách đấu');
-      
+
       const resultText = `🤖 [TỰ ĐỘNG PHÂN ĐỊNH KÈO]: Trận đấu kết thúc với tỉ số ${homeScore}-${awayScore}.\n🏆 Người thắng: ${winnerName}!\nKèo: "${cleanTitle}"\nPhần thưởng: ${bet.description || 'Tự thỏa thuận'}`;
 
       const { error: msgError } = await supabase
@@ -137,7 +137,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
 
     if (!activeMatchesError && activeMatches && activeMatches.length > 0) {
       const activeMatchIds = activeMatches.map(m => m.id);
-      
+
       const { data: invalidPredictions, error: invalidPredsError } = await supabase
         .from('predictions')
         .select('id, user_id')
@@ -165,7 +165,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
     // 2. Lấy danh sách các trận đấu đã kết thúc (FT) và có tỉ số hợp lệ
     const { data: finishedMatches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, home_score, away_score, handicap_team, handicap_value, loss_points')
+      .select('id, home_score, away_score, handicap_team, handicap_value, loss_points, draw_points')
       .eq('status', 'FT');
 
     if (matchesError) {
@@ -197,13 +197,18 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
         const handicapTeam = match.handicap_team || 'none';
         const handicapVal = Number(match.handicap_value || 0);
         const lossPoints = Number(match.loss_points || 0);
+        const drawPoints = Number(match.draw_points || 0);
 
         for (const p of predictions) {
           let isCorrect = false;
+          let isDraw = false;
 
           if (handicapTeam === 'none' || handicapVal === 0) {
             // Cược Châu Âu (1X2)
-            if (p.prediction_choice === 'home' && match.home_score > match.away_score) {
+            if (match.home_score === match.away_score) {
+              // Trận hoà: không ai đoán đúng
+              isDraw = true;
+            } else if (p.prediction_choice === 'home' && match.home_score > match.away_score) {
               isCorrect = true;
             } else if (p.prediction_choice === 'away' && match.home_score < match.away_score) {
               isCorrect = true;
@@ -219,15 +224,18 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
               diff = match.home_score - match.away_score;
             }
 
-            if (diff > 0 && p.prediction_choice === 'home') {
+            if (diff === 0) {
+              // Hoà kèo chấp: không ai đoán đúng
+              isDraw = true;
+            } else if (diff > 0 && p.prediction_choice === 'home') {
               isCorrect = true;
             } else if (diff < 0 && p.prediction_choice === 'away') {
               isCorrect = true;
             }
           }
 
-          // Đoán đúng -> 1đ, đoán sai -> loss_points
-          const points = isCorrect ? 1 : lossPoints;
+          // Đoán đúng -> 1đ, trận hoà -> draw_points, đoán sai -> loss_points
+          const points = isCorrect ? 1 : isDraw ? drawPoints : lossPoints;
 
           // Chỉ cập nhật nếu điểm mới tính khác điểm cũ trong DB (hoặc điểm cũ đang là null)
           if (p.points_earned !== points) {

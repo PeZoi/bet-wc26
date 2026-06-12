@@ -69,6 +69,7 @@ export default function GroupStandingsClient({
   const [tempHandicapTeam, setTempHandicapTeam] = useState<'home' | 'away' | 'none'>('none');
   const [tempHandicapValue, setTempHandicapValue] = useState<number>(0);
   const [tempLossPoints, setTempLossPoints] = useState<number>(0);
+  const [tempDrawPoints, setTempDrawPoints] = useState<number>(0);
   const [tempApplyScope, setTempApplyScope] = useState<'match' | 'stage' | 'group_stage'>('match');
   const [isSavingHandicap, setIsSavingHandicap] = useState(false);
 
@@ -102,6 +103,7 @@ export default function GroupStandingsClient({
     setTempHandicapTeam((match.handicap_team as 'home' | 'away' | 'none') || 'none');
     setTempHandicapValue(match.handicap_value ?? 0);
     setTempLossPoints(match.loss_points ?? 0);
+    setTempDrawPoints(match.draw_points ?? 0);
     setTempApplyScope('match');
     setIsAdminModalOpen(true);
   };
@@ -118,7 +120,8 @@ export default function GroupStandingsClient({
         tempHandicapTeam,
         tempHandicapTeam === 'none' ? 0 : tempHandicapValue,
         tempLossPoints,
-        tempApplyScope
+        tempApplyScope,
+        tempDrawPoints
       );
 
       if (res.success) {
@@ -341,8 +344,13 @@ export default function GroupStandingsClient({
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/50" />
                               {formattedDate} - {formattedTime}
                               {Number(match.loss_points || 0) > 0 && (
-                                <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full select-none ml-1.5">
+                                <span className="text-[8px] font-bold text-amber-400 bg-amber-500/5 border border-amber-500/20 px-1.5 py-0.5 rounded-md select-none ml-1.5">
                                   Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
+                                </span>
+                              )}
+                              {Number(match.draw_points || 0) > 0 && (
+                                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/5 border border-sky-500/20 px-1.5 py-0.5 rounded-md select-none ml-1.5">
+                                  Hoà: +{new Intl.NumberFormat('en-US').format(match.draw_points ?? 0)}đ
                                 </span>
                               )}
                             </span>
@@ -523,7 +531,7 @@ export default function GroupStandingsClient({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="relative w-full max-w-[480px] bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 space-y-6 text-left"
+                className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 text-left"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -538,152 +546,198 @@ export default function GroupStandingsClient({
                   </button>
                 </div>
 
-                {/* Match Info Box */}
-                <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={selectedAdminMatch.home_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={selectedAdminMatch.home_team} 
-                    />
-                    <TeamName 
-                      name={selectedAdminMatch.home_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
-                  </div>
-
-                  <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                    vs
-                  </div>
-
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={selectedAdminMatch.away_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={selectedAdminMatch.away_team} 
-                    />
-                    <TeamName 
-                      name={selectedAdminMatch.away_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
-                  </div>
-                </div>
-
-                {/* Select Handicap Team */}
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                    Chọn đội chấp
-                  </label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'none', label: 'Không chấp' },
-                      { id: 'home', label: `${translateTeamName(selectedAdminMatch.home_team)} chấp` },
-                      { id: 'away', label: `${translateTeamName(selectedAdminMatch.away_team)} chấp` }
-                    ].map((option) => {
-                      const isSelected = tempHandicapTeam === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
-                          className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
-                            isSelected
-                              ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
-                              : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
-                          }`}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Handicap Value Input */}
-                {tempHandicapTeam !== 'none' && (
-                  <div className="space-y-3">
-                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                      Tỷ lệ chấp (Trái)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0"
-                        value={tempHandicapValue}
-                        onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
-                        placeholder="0.5"
+                {/* Scrollable Container */}
+                <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {/* Match Info Box */}
+                  <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={selectedAdminMatch.home_logo} 
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={selectedAdminMatch.home_team} 
                       />
-                      <div className="grid grid-cols-4 gap-1.5 flex-1">
-                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
-                          const isValSelected = tempHandicapValue === val;
-                          return (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => setTempHandicapValue(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
-                                  ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
-                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TeamName 
+                        name={selectedAdminMatch.home_team} 
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      />
+                    </div>
+
+                    <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                      vs
+                    </div>
+
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={selectedAdminMatch.away_logo} 
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={selectedAdminMatch.away_team} 
+                      />
+                      <TeamName 
+                        name={selectedAdminMatch.away_team} 
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Loss Points Input */}
-                <div className="space-y-3 border-t border-white/5 pt-4">
-                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                    Điểm cộng khi dự đoán sai
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
-                      onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
-                        if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                          const numValue = parseInt(rawValue, 10);
-                          setTempLossPoints(isNaN(numValue) ? 0 : numValue);
-                        }
-                      }}
-                      className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
-                      placeholder="0"
-                    />
-                    {/* Quick Selection Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5 flex-1">
-                      {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
-                        const isValSelected = tempLossPoints === val;
+                  {/* Select Handicap Team */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Chọn đội chấp
+                    </label>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { id: 'none', label: 'Không chấp' },
+                        { id: 'home', label: `${translateTeamName(selectedAdminMatch.home_team)} chấp` },
+                        { id: 'away', label: `${translateTeamName(selectedAdminMatch.away_team)} chấp` }
+                      ].map((option) => {
+                        const isSelected = tempHandicapTeam === option.id;
                         return (
                           <button
-                            key={val}
+                            key={option.id}
                             type="button"
-                            onClick={() => setTempLossPoints(val)}
-                            className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                              isValSelected
-                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                                : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                            onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
+                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
+                              isSelected
+                                ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
+                                : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
                             }`}
                           >
-                            {val}đ
+                            {option.label}
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Phạm vi áp dụng điểm thua */}
+                  {/* Handicap Value Input */}
+                  {tempHandicapTeam !== 'none' && (
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Tỷ lệ chấp (Trái)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={tempHandicapValue}
+                          onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
+                          placeholder="0.5"
+                        />
+                        <div className="grid grid-cols-4 gap-1.5 flex-1">
+                          {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
+                            const isValSelected = tempHandicapValue === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTempHandicapValue(val)}
+                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                  isValSelected
+                                    ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
+                                    : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                                }`}
+                              >
+                                {val}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Loss Points Input */}
+                  <div className="space-y-3 border-t border-white/5 pt-4">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Điểm cộng khi dự đoán sai
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
+                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                            const numValue = parseInt(rawValue, 10);
+                            setTempLossPoints(isNaN(numValue) ? 0 : numValue);
+                          }
+                        }}
+                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
+                        placeholder="0"
+                      />
+                      {/* Quick Selection Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 flex-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                          const isValSelected = tempLossPoints === val;
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setTempLossPoints(val)}
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                isValSelected
+                                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                              }`}
+                            >
+                              {val}đ
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Draw Points Input */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Điểm cộng khi trận đấu hoà
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={tempDrawPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempDrawPoints)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                            const numValue = parseInt(rawValue, 10);
+                            setTempDrawPoints(isNaN(numValue) ? 0 : numValue);
+                          }
+                        }}
+                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/25 transition-all shadow-inner"
+                        placeholder="0"
+                      />
+                      {/* Quick Selection Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 flex-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                          const isValSelected = tempDrawPoints === val;
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setTempDrawPoints(val)}
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                isValSelected
+                                  ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
+                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                              }`}
+                            >
+                              {val}đ
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phạm vi áp dụng điểm chung */}
                   <div className="space-y-2.5 mt-3.5 bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-2xl">
                     <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                      Phạm vi áp dụng điểm thua
+                      Phạm vi áp dụng (Điểm sai & Điểm hoà)
                     </span>
                     <div className="flex flex-col gap-2.5 mt-2">
                       {/* Chỉ trận này */}

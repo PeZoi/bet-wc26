@@ -49,6 +49,7 @@ export default function MatchCard({
   const [tempHandicapTeam, setTempHandicapTeam] = useState<'home' | 'away' | 'none'>('none');
   const [tempHandicapValue, setTempHandicapValue] = useState<number>(0);
   const [tempLossPoints, setTempLossPoints] = useState<number>(0);
+  const [tempDrawPoints, setTempDrawPoints] = useState<number>(0);
   const [tempApplyScope, setTempApplyScope] = useState<'match' | 'stage' | 'group_stage'>('match');
   const [isSavingHandicap, setIsSavingHandicap] = useState(false);
 
@@ -57,6 +58,7 @@ export default function MatchCard({
     setTempHandicapTeam((match.handicap_team as 'home' | 'away' | 'none') || 'none');
     setTempHandicapValue(match.handicap_value ?? 0);
     setTempLossPoints(match.loss_points ?? 0);
+    setTempDrawPoints(match.draw_points ?? 0);
     setTempApplyScope('match');
     setIsAdminModalOpen(true);
   };
@@ -72,7 +74,8 @@ export default function MatchCard({
         tempHandicapTeam,
         tempHandicapTeam === 'none' ? 0 : tempHandicapValue,
         tempLossPoints,
-        tempApplyScope
+        tempApplyScope,
+        tempDrawPoints
       );
 
       if (res.success) {
@@ -163,6 +166,8 @@ export default function MatchCard({
   };
 
   // Calculate badge styling for points earned
+  const isDraw = match.status === 'FT' && match.home_score !== null && match.away_score !== null && match.home_score === match.away_score;
+
   const getPointsBadge = (points: number | null) => {
     if (points === null) return null;
     if (points === 1) {
@@ -170,6 +175,21 @@ export default function MatchCard({
         <span className="flex items-center gap-1 text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full shadow-sm shadow-emerald-500/10">
           <Trophy className="h-3.5 w-3.5" />
           Dự đoán đúng (+1đ)
+        </span>
+      );
+    }
+    // Trận hoà: hiển thị riêng với màu sky
+    if (isDraw) {
+      if (points > 0) {
+        return (
+          <span className="text-xs font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/25 px-2.5 py-1 rounded-full text-center">
+            Trận hoà (+{new Intl.NumberFormat('en-US').format(points)}đ)
+          </span>
+        );
+      }
+      return (
+        <span className="text-xs font-semibold bg-sky-500/10 text-sky-400/80 border border-sky-500/15 px-2.5 py-1 rounded-full text-center">
+          Trận hoà (0đ)
         </span>
       );
     }
@@ -196,6 +216,9 @@ export default function MatchCard({
       if (userPrediction.points_earned === 1) {
         // Đoán đúng: Nền xanh lá tối đậm đà, viền xanh lá nổi bật
         cardStatusClass = 'bg-[#071f18]/95 border-emerald-500/40 hover:border-emerald-500/60 shadow-[0_0_25px_-5px_rgba(16,185,129,0.15)]';
+      } else if (isDraw) {
+        // Trận hoà: Nền xanh sky tối, viền sky nổi bật
+        cardStatusClass = 'bg-[#0b1520]/95 border-sky-500/35 hover:border-sky-500/55 shadow-[0_0_25px_-5px_rgba(56,189,248,0.12)]';
       } else {
         // Đoán sai: Nền đỏ tối đậm đà, viền đỏ nổi bật
         cardStatusClass = 'bg-[#1f0d0d]/95 border-red-500/40 hover:border-red-500/60 shadow-[0_0_25px_-5px_rgba(239,68,68,0.15)]';
@@ -214,6 +237,8 @@ export default function MatchCard({
     if (userPrediction) {
       if (userPrediction.points_earned === 1) {
         ringClass = 'ring-[#071f18]';
+      } else if (isDraw) {
+        ringClass = 'ring-[#0b1520]';
       } else {
         ringClass = 'ring-[#1f0d0d]';
       }
@@ -255,44 +280,66 @@ export default function MatchCard({
   return (
     <div className={`${cardStatusClass} rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between h-full relative group`}>
       {/* Header Info */}
-      <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
-        <div className="flex items-center gap-2">
-          <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
-            {match.stage}
-          </span>
-          {Number(match.loss_points || 0) > 0 && (
-            <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full select-none" title="Điểm cộng khi dự đoán sai trận này">
-              Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
+      <div className="flex flex-col gap-2 border-b border-white/5 pb-3.5 mb-4">
+        {/* Top Row: Stage & Status */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase whitespace-nowrap">
+              {match.stage}
+            </span>
+            {isAdmin && (
+              <button
+                onClick={handleOpenAdminModal}
+                className="p-1.5 rounded-lg bg-white/5 border border-white/10 text-muted-foreground/80 hover:bg-white/10 hover:text-white active:scale-95 transition-all cursor-pointer flex items-center justify-center"
+                title="Thiết lập chấp & Điểm cộng (Admin)"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+          {match.status === 'LIVE' ? (
+            <span className="flex items-center gap-1.5 text-xs font-extrabold text-red-400 bg-red-500/10 border border-red-500/20 px-3 py-1 rounded-full animate-pulse shadow-sm shadow-red-500/5 select-none">
+              <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
+              LIVE
+            </span>
+          ) : match.status === 'FT' ? (
+            <span className="text-xs font-semibold text-muted-foreground/80 bg-white/5 px-3 py-1 rounded-full border border-white/[0.06] select-none">
+              Kết thúc
+            </span>
+          ) : timeLeft ? (
+            <span className="flex items-center gap-1.5 text-xs font-bold text-[#10b981] bg-[#10b981]/15 px-3 py-1 rounded-full border border-[#10b981]/25 shadow-sm shadow-[#10b981]/5 select-none font-mono">
+              <Clock className="h-3.5 w-3.5 animate-pulse" />
+              {timeLeft}
+            </span>
+          ) : (
+            <span className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-3 py-1 rounded-full border border-yellow-500/20 select-none">
+              Sắp đá
             </span>
           )}
-          {isAdmin && (
-            <button
-              onClick={handleOpenAdminModal}
-              className="p-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
-              title="Thiết lập chấp (Admin)"
-            >
-              <Edit3 className="h-3 w-3" />
-            </button>
-          )}
         </div>
-        {match.status === 'LIVE' ? (
-          <span className="flex items-center gap-1.5 text-xs font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-2 py-0.5 rounded-full animate-pulse">
-            <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
-            LIVE
-          </span>
-        ) : match.status === 'FT' ? (
-          <span className="text-xs font-semibold text-muted-foreground bg-white/5 px-2 py-0.5 rounded-full border border-white/5">
-            Kết thúc
-          </span>
-        ) : timeLeft ? (
-          <span className="flex items-center gap-1 text-xs font-semibold text-primary bg-primary/10 px-2.5 py-0.5 rounded-full border border-primary/20">
-            <Clock className="h-3 w-3" />
-            {timeLeft}
-          </span>
-        ) : (
-          <span className="text-xs font-semibold text-yellow-400 bg-yellow-500/10 px-2 py-0.5 rounded-full border border-yellow-500/20">
-            Sắp đá
-          </span>
+
+        {/* Bottom Row: Points Info (Render only if points exist) */}
+        {(Number(match.loss_points || 0) > 0 || Number(match.draw_points || 0) > 0) && (
+          <div className="flex items-center gap-2 flex-wrap">
+            {Number(match.loss_points || 0) > 0 && (
+              <span 
+                className="text-[10px] font-extrabold text-amber-400 bg-amber-500/5 border border-amber-500/20 px-2.5 py-1 rounded-lg select-none flex items-center gap-1.5 shadow-sm"
+                title="Điểm cộng khi dự đoán sai trận này"
+              >
+                <span className="w-1 h-1 rounded-full bg-amber-400" />
+                Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
+              </span>
+            )}
+            {Number(match.draw_points || 0) > 0 && (
+              <span 
+                className="text-[10px] font-extrabold text-sky-400 bg-sky-500/5 border border-sky-500/20 px-2.5 py-1 rounded-lg select-none flex items-center gap-1.5 shadow-sm"
+                title="Điểm cộng khi trận đấu hoà"
+              >
+                <span className="w-1 h-1 rounded-full bg-sky-400" />
+                Hoà: +{new Intl.NumberFormat('en-US').format(match.draw_points ?? 0)}đ
+              </span>
+            )}
+          </div>
         )}
       </div>
 
@@ -487,7 +534,7 @@ export default function MatchCard({
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="relative w-full max-w-[480px] bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 space-y-6 text-left"
+                className="relative w-full max-w-[480px] max-h-[85vh] flex flex-col bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 text-left"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
@@ -502,157 +549,203 @@ export default function MatchCard({
                   </button>
                 </div>
 
-                {/* Match Header Info */}
-                <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
-                  {/* Home Team */}
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={match.home_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={match.home_team} 
-                    />
-                    <TeamName 
-                      name={match.home_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
-                  </div>
-
-                  {/* VS badge */}
-                  <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                    vs
-                  </div>
-
-                  {/* Away Team */}
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={match.away_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={match.away_team} 
-                    />
-                    <TeamName 
-                      name={match.away_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
-                  </div>
-                </div>
-
-                {/* Handicap Team Select */}
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                    Chọn đội chấp
-                  </label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'none', label: 'Không chấp' },
-                      { id: 'home', label: `${translateTeamName(match.home_team)} chấp` },
-                      { id: 'away', label: `${translateTeamName(match.away_team)} chấp` }
-                    ].map((option) => {
-                      const isSelected = tempHandicapTeam === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
-                          className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
-                            isSelected
-                              ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
-                              : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
-                          }`}
-                          title={option.label}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
-
-                {/* Handicap Value Input */}
-                {tempHandicapTeam !== 'none' && (
-                  <div className="space-y-3">
-                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                      Tỷ lệ chấp (Trái)
-                    </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0"
-                        value={tempHandicapValue}
-                        onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
-                        placeholder="0.5"
+                {/* Scrollable Container */}
+                <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {/* Match Header Info */}
+                  <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
+                    {/* Home Team */}
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={match.home_logo} 
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={match.home_team} 
                       />
-                      {/* Quick Selection Buttons */}
-                      <div className="grid grid-cols-4 gap-1.5 flex-1">
-                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
-                          const isValSelected = tempHandicapValue === val;
-                          return (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => setTempHandicapValue(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
-                                  ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
-                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          );
-                        })}
-                      </div>
+                      <TeamName 
+                        name={match.home_team} 
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      />
+                    </div>
+
+                    {/* VS badge */}
+                    <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                      vs
+                    </div>
+
+                    {/* Away Team */}
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={match.away_logo} 
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={match.away_team} 
+                      />
+                      <TeamName 
+                        name={match.away_team} 
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      />
                     </div>
                   </div>
-                )}
 
-                {/* Loss Points Input */}
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                    Điểm cộng khi dự đoán sai
-                  </label>
-                  <div className="flex items-center gap-3">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
-                      onChange={(e) => {
-                        const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
-                        if (rawValue === '' || /^\d+$/.test(rawValue)) {
-                          const numValue = parseInt(rawValue, 10);
-                          setTempLossPoints(isNaN(numValue) ? 0 : numValue);
-                        }
-                      }}
-                      className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
-                      placeholder="0"
-                    />
-                    {/* Quick Selection Buttons */}
-                    <div className="grid grid-cols-4 gap-1.5 flex-1">
-                      {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
-                        const isValSelected = tempLossPoints === val;
+                  {/* Handicap Team Select */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Chọn đội chấp
+                    </label>
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { id: 'none', label: 'Không chấp' },
+                        { id: 'home', label: `${translateTeamName(match.home_team)} chấp` },
+                        { id: 'away', label: `${translateTeamName(match.away_team)} chấp` }
+                      ].map((option) => {
+                        const isSelected = tempHandicapTeam === option.id;
                         return (
                           <button
-                            key={val}
+                            key={option.id}
                             type="button"
-                            onClick={() => setTempLossPoints(val)}
-                            className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                              isValSelected
-                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
-                                : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                            onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
+                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
+                              isSelected
+                                ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
+                                : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
                             }`}
+                            title={option.label}
                           >
-                            {val}đ
+                            {option.label}
                           </button>
                         );
                       })}
                     </div>
                   </div>
 
-                  {/* Phạm vi áp dụng điểm thua */}
+                  {/* Handicap Value Input */}
+                  {tempHandicapTeam !== 'none' && (
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Tỷ lệ chấp (Trái)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={tempHandicapValue}
+                          onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
+                          placeholder="0.5"
+                        />
+                        {/* Quick Selection Buttons */}
+                        <div className="grid grid-cols-4 gap-1.5 flex-1">
+                          {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
+                            const isValSelected = tempHandicapValue === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTempHandicapValue(val)}
+                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                  isValSelected
+                                    ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
+                                    : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                                }`}
+                              >
+                                {val}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Loss Points Input */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Điểm cộng khi dự đoán sai
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
+                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                            const numValue = parseInt(rawValue, 10);
+                            setTempLossPoints(isNaN(numValue) ? 0 : numValue);
+                          }
+                        }}
+                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
+                        placeholder="0"
+                      />
+                      {/* Quick Selection Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 flex-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                          const isValSelected = tempLossPoints === val;
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setTempLossPoints(val)}
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                isValSelected
+                                  ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                              }`}
+                            >
+                              {val}đ
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Draw Points Input */}
+                  <div className="space-y-3">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Điểm cộng khi trận đấu hoà
+                    </label>
+                    <div className="flex items-center gap-3">
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={tempDrawPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempDrawPoints)}
+                        onChange={(e) => {
+                          const rawValue = e.target.value.replace(/,/g, '');
+                          if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                            const numValue = parseInt(rawValue, 10);
+                            setTempDrawPoints(isNaN(numValue) ? 0 : numValue);
+                          }
+                        }}
+                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/25 transition-all shadow-inner"
+                        placeholder="0"
+                      />
+                      {/* Quick Selection Buttons */}
+                      <div className="grid grid-cols-4 gap-1.5 flex-1">
+                        {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                          const isValSelected = tempDrawPoints === val;
+                          return (
+                            <button
+                              key={val}
+                              type="button"
+                              onClick={() => setTempDrawPoints(val)}
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                isValSelected
+                                  ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
+                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                              }`}
+                            >
+                              {val}đ
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Phạm vi áp dụng điểm chung */}
                   <div className="space-y-2.5 mt-3.5 bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-2xl">
                     <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                      Phạm vi áp dụng điểm thua
+                      Phạm vi áp dụng (Điểm sai & Điểm hoà)
                     </span>
                     <div className="flex flex-col gap-2.5 mt-2">
                       {/* Chỉ trận này */}

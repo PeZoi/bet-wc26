@@ -25,6 +25,7 @@ export interface Match {
   handicap_team?: 'home' | 'away' | 'none' | null;
   handicap_value?: number;
   loss_points?: number;
+  draw_points?: number;
   home_scorers?: string | null;
   away_scorers?: string | null;
 }
