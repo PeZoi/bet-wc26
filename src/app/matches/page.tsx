@@ -1,5 +1,5 @@
 import React from "react";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Navbar from "@/components/navbar";
 import { autoSyncThrottled } from "@/lib/sync";
 import MatchesList from "./matches-list";
@@ -11,6 +11,7 @@ export const dynamic = "force-dynamic";
 export default async function MatchesPage() {
 	let matches: Match[] = [];
 	let predictions: Prediction[] = [];
+	let allPredictions: any[] = [];
 	let user: User | null = null;
 	let isLoggedIn = false;
 	let isAdmin = false;
@@ -51,10 +52,18 @@ export default async function MatchesPage() {
 				.eq("user_id", user.id);
 			predictions = dbPredictions || [];
 		}
+
+		// Fetch all predictions for all users to show who has bet (Avatar Stack)
+		const adminSupabase = createAdminClient();
+		const { data: dbAllPredictions } = await adminSupabase
+			.from("predictions")
+			.select("match_id, user_id, prediction_choice, profiles:profiles!predictions_user_id_fkey(avatar_url, display_name)");
+		allPredictions = dbAllPredictions || [];
 	} catch (error) {
 		console.error("Database error in MatchesPage:", error);
 		matches = [];
 		predictions = [];
+		allPredictions = [];
 	}
 
 	return (
@@ -76,6 +85,7 @@ export default async function MatchesPage() {
 					<MatchesList
 						initialMatches={matches}
 						initialPredictions={predictions}
+						allPredictions={allPredictions}
 						isLoggedIn={isLoggedIn}
 						isAdmin={isAdmin}
 					/>

@@ -68,6 +68,8 @@ export default function GroupStandingsClient({
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [tempHandicapTeam, setTempHandicapTeam] = useState<'home' | 'away' | 'none'>('none');
   const [tempHandicapValue, setTempHandicapValue] = useState<number>(0);
+  const [tempLossPoints, setTempLossPoints] = useState<number>(0);
+  const [tempApplyScope, setTempApplyScope] = useState<'match' | 'stage' | 'group_stage'>('match');
   const [isSavingHandicap, setIsSavingHandicap] = useState(false);
 
   const toggleGroup = (groupLetter: string) => {
@@ -99,6 +101,8 @@ export default function GroupStandingsClient({
     setSelectedAdminMatch(match);
     setTempHandicapTeam((match.handicap_team as 'home' | 'away' | 'none') || 'none');
     setTempHandicapValue(match.handicap_value ?? 0);
+    setTempLossPoints(match.loss_points ?? 0);
+    setTempApplyScope('match');
     setIsAdminModalOpen(true);
   };
 
@@ -112,7 +116,9 @@ export default function GroupStandingsClient({
         selectedAdminMatch.away_score ?? 0,
         selectedAdminMatch.status,
         tempHandicapTeam,
-        tempHandicapTeam === 'none' ? 0 : tempHandicapValue
+        tempHandicapTeam === 'none' ? 0 : tempHandicapValue,
+        tempLossPoints,
+        tempApplyScope
       );
 
       if (res.success) {
@@ -332,6 +338,11 @@ export default function GroupStandingsClient({
                             <span className="font-semibold flex items-center gap-1.5">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/50" />
                               {formattedDate} - {formattedTime}
+                              {Number(match.loss_points || 0) > 0 && (
+                                <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full select-none ml-1.5">
+                                  Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points)}đ
+                                </span>
+                              )}
                             </span>
                             
                             <div className="flex items-center gap-1.5">
@@ -624,6 +635,104 @@ export default function GroupStandingsClient({
                     </div>
                   </div>
                 )}
+
+                {/* Loss Points Input */}
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                    Điểm cộng khi dự đoán sai
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
+                        if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                          const numValue = parseInt(rawValue, 10);
+                          setTempLossPoints(isNaN(numValue) ? 0 : numValue);
+                        }
+                      }}
+                      className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
+                      placeholder="0"
+                    />
+                    {/* Quick Selection Buttons */}
+                    <div className="grid grid-cols-4 gap-1.5 flex-1">
+                      {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                        const isValSelected = tempLossPoints === val;
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setTempLossPoints(val)}
+                            className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                              isValSelected
+                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                            }`}
+                          >
+                            {val}đ
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Phạm vi áp dụng điểm thua */}
+                  <div className="space-y-2.5 mt-3.5 bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-2xl">
+                    <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Phạm vi áp dụng điểm thua
+                    </span>
+                    <div className="flex flex-col gap-2.5 mt-2">
+                      {/* Chỉ trận này */}
+                      <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                        <input
+                          type="radio"
+                          name="standingsApplyScope"
+                          value="match"
+                          checked={tempApplyScope === 'match'}
+                          onChange={() => setTempApplyScope('match')}
+                          className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        />
+                        <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                          Chỉ áp dụng cho trận đấu này
+                        </span>
+                      </label>
+
+                      {/* Cùng Stage */}
+                      <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                        <input
+                          type="radio"
+                          name="standingsApplyScope"
+                          value="stage"
+                          checked={tempApplyScope === 'stage'}
+                          onChange={() => setTempApplyScope('stage')}
+                          className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        />
+                        <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                          Áp dụng cho toàn bộ <span className="text-amber-400 font-bold">{selectedAdminMatch.stage}</span>
+                        </span>
+                      </label>
+
+                      {/* Vòng bảng */}
+                      {selectedAdminMatch.stage?.startsWith('Bảng') && (
+                        <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                          <input
+                            type="radio"
+                            name="standingsApplyScope"
+                            value="group_stage"
+                            checked={tempApplyScope === 'group_stage'}
+                            onChange={() => setTempApplyScope('group_stage')}
+                            className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                          />
+                          <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                            Áp dụng cho <span className="text-amber-400 font-bold">tất cả các Bảng (Vòng bảng)</span>
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">

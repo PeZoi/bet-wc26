@@ -15,6 +15,7 @@ import { updateMatchScoreAdmin } from '@/app/actions';
 interface MatchCardProps {
   match: Match;
   userPrediction?: Prediction;
+  matchPredictions?: any[];
   onPredictClick?: (match: Match) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean;
@@ -33,6 +34,7 @@ function Portal({ children }: { children: React.ReactNode }) {
 export default function MatchCard({
   match,
   userPrediction,
+  matchPredictions = [],
   onPredictClick,
   isLoggedIn,
   isAdmin = false
@@ -46,12 +48,16 @@ export default function MatchCard({
   const [isAdminModalOpen, setIsAdminModalOpen] = useState(false);
   const [tempHandicapTeam, setTempHandicapTeam] = useState<'home' | 'away' | 'none'>('none');
   const [tempHandicapValue, setTempHandicapValue] = useState<number>(0);
+  const [tempLossPoints, setTempLossPoints] = useState<number>(0);
+  const [tempApplyScope, setTempApplyScope] = useState<'match' | 'stage' | 'group_stage'>('match');
   const [isSavingHandicap, setIsSavingHandicap] = useState(false);
 
   const handleOpenAdminModal = (e: React.MouseEvent) => {
     e.stopPropagation(); // Ngăn sự kiện click lan ra ngoài Card
     setTempHandicapTeam((match.handicap_team as 'home' | 'away' | 'none') || 'none');
     setTempHandicapValue(match.handicap_value ?? 0);
+    setTempLossPoints(match.loss_points ?? 0);
+    setTempApplyScope('match');
     setIsAdminModalOpen(true);
   };
 
@@ -64,7 +70,9 @@ export default function MatchCard({
         match.away_score ?? 0,
         match.status,
         tempHandicapTeam,
-        tempHandicapTeam === 'none' ? 0 : tempHandicapValue
+        tempHandicapTeam === 'none' ? 0 : tempHandicapValue,
+        tempLossPoints,
+        tempApplyScope
       );
 
       if (res.success) {
@@ -155,11 +163,19 @@ export default function MatchCard({
   // Calculate badge styling for points earned
   const getPointsBadge = (points: number | null) => {
     if (points === null) return null;
-    if (points === 3) {
+    if (points === 1) {
       return (
         <span className="flex items-center gap-1 text-xs font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 px-2.5 py-1 rounded-full shadow-sm shadow-emerald-500/10">
           <Trophy className="h-3.5 w-3.5" />
-          Dự đoán đúng (+3đ)
+          Dự đoán đúng (+1đ)
+        </span>
+      );
+    }
+    // Đoán sai: nếu có điểm thua > 0 thì hiện +Xđ, nếu không thì hiện 0đ
+    if (points > 0) {
+      return (
+        <span className="text-xs font-semibold bg-amber-500/15 text-amber-400 border border-amber-500/25 px-2.5 py-1 rounded-full text-center">
+          Dự đoán sai (+{new Intl.NumberFormat('en-US').format(points)}đ)
         </span>
       );
     }
@@ -170,15 +186,84 @@ export default function MatchCard({
     );
   };
 
+  // Xác định class động cho container dựa trên kết quả dự đoán của người chơi
+  let cardStatusClass = 'glass-panel hover:border-white/15'; // Nền mặc định
+
+  if (match.status === 'FT') {
+    if (userPrediction) {
+      if (userPrediction.points_earned === 1) {
+        // Đoán đúng: Nền xanh lá tối đậm đà, viền xanh lá nổi bật
+        cardStatusClass = 'bg-[#071f18]/95 border-emerald-500/40 hover:border-emerald-500/60 shadow-[0_0_25px_-5px_rgba(16,185,129,0.15)]';
+      } else {
+        // Đoán sai: Nền đỏ tối đậm đà, viền đỏ nổi bật
+        cardStatusClass = 'bg-[#1f0d0d]/95 border-red-500/40 hover:border-red-500/60 shadow-[0_0_25px_-5px_rgba(239,68,68,0.15)]';
+      }
+    }
+  } else if (match.status === 'NS') {
+    if (userPrediction) {
+      // Đã đoán nhưng chưa đá: Nền indigo tối, viền indigo nổi bật
+      cardStatusClass = 'bg-[#0e1324]/95 border-indigo-500/45 hover:border-indigo-500/65 shadow-[0_0_25px_-5px_rgba(99,102,241,0.12)]';
+    }
+  }
+
+  // Xác định màu viền ring của avatar cho khớp màu nền thẻ (Shadcn UI style)
+  let ringClass = 'ring-[#11131a]';
+  if (match.status === 'FT') {
+    if (userPrediction) {
+      if (userPrediction.points_earned === 1) {
+        ringClass = 'ring-[#071f18]';
+      } else {
+        ringClass = 'ring-[#1f0d0d]';
+      }
+    }
+  } else if (match.status === 'NS') {
+    if (userPrediction) {
+      ringClass = 'ring-[#0e1324]';
+    }
+  }
+
+  const homeBettors = matchPredictions.filter(p => p.prediction_choice === 'home');
+  const awayBettors = matchPredictions.filter(p => p.prediction_choice === 'away');
+  const drawBettors = matchPredictions.filter(p => p.prediction_choice === 'draw');
+
+  const renderMiniAvatarStack = (bettors: any[]) => {
+    if (bettors.length === 0) return <div className="h-6" />; // Giữ khoảng cách cố định khi không có cược để không bị lệch layout
+    return (
+      <div className="flex items-center justify-center gap-1 mt-1.5 select-none h-6">
+        <div className="flex -space-x-1.5 overflow-hidden">
+          {bettors.slice(0, 3).map((pred, i) => (
+            <img
+              key={pred.id || i}
+              className={`inline-block h-5 w-5 rounded-full ring-2 ${ringClass} object-cover bg-white/5 transition-transform hover:scale-110 hover:z-10`}
+              src={pred.profiles?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'}
+              alt={pred.profiles?.display_name || 'Người chơi'}
+              title={pred.profiles?.display_name || 'Người chơi'}
+            />
+          ))}
+          {bettors.length > 3 && (
+            <div className={`inline-flex items-center justify-center h-5 w-5 rounded-full ring-2 ${ringClass} bg-white/10 text-[8px] font-bold text-white hover:scale-110 transition-transform`}>
+              +{bettors.length - 3}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="glass-panel rounded-2xl p-5 hover:border-white/15 transition-all duration-300 flex flex-col justify-between h-full relative group">
+    <div className={`${cardStatusClass} rounded-2xl p-5 transition-all duration-300 flex flex-col justify-between h-full relative group`}>
       {/* Header Info */}
       <div className="flex items-center justify-between border-b border-white/5 pb-3 mb-4">
         <div className="flex items-center gap-2">
           <span className="text-xs font-semibold tracking-wider text-muted-foreground uppercase">
             {match.stage}
           </span>
-          {isAdmin && match.status !== 'FT' && (
+          {Number(match.loss_points || 0) > 0 && (
+            <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full select-none" title="Điểm cộng khi dự đoán sai trận này">
+              Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points)}đ
+            </span>
+          )}
+          {isAdmin && (
             <button
               onClick={handleOpenAdminModal}
               className="p-1 rounded bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 hover:scale-105 active:scale-95 transition-all cursor-pointer flex items-center justify-center"
@@ -231,11 +316,18 @@ export default function MatchCard({
             name={match.home_team} 
             className="mt-2 text-sm font-bold text-foreground max-w-full justify-center" 
           />
-          {match.handicap_team === 'home' && Number(match.handicap_value || 0) > 0 && (
-            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full mt-1.5 uppercase tracking-wide">
-              Chấp {match.handicap_value}
-            </span>
-          )}
+          <div className="min-h-[22px] mt-1.5 flex items-center justify-center select-none">
+            {match.handicap_team === 'home' && Number(match.handicap_value || 0) > 0 ? (
+              <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                Chấp {match.handicap_value}
+              </span>
+            ) : (
+              <span className="text-[10px] py-0.5 px-2 opacity-0 pointer-events-none block">
+                Chấp 0
+              </span>
+            )}
+          </div>
+          {renderMiniAvatarStack(homeBettors)}
         </div>
 
         {/* Match Score or Time */}
@@ -256,6 +348,7 @@ export default function MatchCard({
               </span>
             </div>
           )}
+          {renderMiniAvatarStack(drawBettors)}
         </div>
 
         {/* Away Team */}
@@ -278,11 +371,18 @@ export default function MatchCard({
             name={match.away_team} 
             className="mt-2 text-sm font-bold text-foreground max-w-full justify-center" 
           />
-          {match.handicap_team === 'away' && Number(match.handicap_value || 0) > 0 && (
-            <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full mt-1.5 uppercase tracking-wide">
-              Chấp {match.handicap_value}
-            </span>
-          )}
+          <div className="min-h-[22px] mt-1.5 flex items-center justify-center select-none">
+            {match.handicap_team === 'away' && Number(match.handicap_value || 0) > 0 ? (
+              <span className="text-[10px] font-bold text-red-400 bg-red-500/10 border border-red-500/20 px-2 py-0.5 rounded-full uppercase tracking-wide">
+                Chấp {match.handicap_value}
+              </span>
+            ) : (
+              <span className="text-[10px] py-0.5 px-2 opacity-0 pointer-events-none block">
+                Chấp 0
+              </span>
+            )}
+          </div>
+          {renderMiniAvatarStack(awayBettors)}
         </div>
       </div>
 
@@ -504,6 +604,104 @@ export default function MatchCard({
                     </div>
                   </div>
                 )}
+
+                {/* Loss Points Input */}
+                <div className="space-y-3">
+                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                    Điểm cộng khi dự đoán sai
+                  </label>
+                  <div className="flex items-center gap-3">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
+                      onChange={(e) => {
+                        const rawValue = e.target.value.replace(/,/g, ''); // Loại bỏ tất cả dấu phẩy
+                        if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                          const numValue = parseInt(rawValue, 10);
+                          setTempLossPoints(isNaN(numValue) ? 0 : numValue);
+                        }
+                      }}
+                      className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
+                      placeholder="0"
+                    />
+                    {/* Quick Selection Buttons */}
+                    <div className="grid grid-cols-4 gap-1.5 flex-1">
+                      {[0, 1, 2, 3, 4, 5, 6, 7].map((val) => {
+                        const isValSelected = tempLossPoints === val;
+                        return (
+                          <button
+                            key={val}
+                            type="button"
+                            onClick={() => setTempLossPoints(val)}
+                            className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                              isValSelected
+                                ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                            }`}
+                          >
+                            {val}đ
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Phạm vi áp dụng điểm thua */}
+                  <div className="space-y-2.5 mt-3.5 bg-white/[0.02] border border-white/[0.04] p-3.5 rounded-2xl">
+                    <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Phạm vi áp dụng điểm thua
+                    </span>
+                    <div className="flex flex-col gap-2.5 mt-2">
+                      {/* Chỉ trận này */}
+                      <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                        <input
+                          type="radio"
+                          name="applyScope"
+                          value="match"
+                          checked={tempApplyScope === 'match'}
+                          onChange={() => setTempApplyScope('match')}
+                          className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        />
+                        <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                          Chỉ áp dụng cho trận đấu này
+                        </span>
+                      </label>
+
+                      {/* Cùng Stage */}
+                      <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                        <input
+                          type="radio"
+                          name="applyScope"
+                          value="stage"
+                          checked={tempApplyScope === 'stage'}
+                          onChange={() => setTempApplyScope('stage')}
+                          className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                        />
+                        <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                          Áp dụng cho toàn bộ <span className="text-amber-400 font-bold">{match.stage}</span>
+                        </span>
+                      </label>
+
+                      {/* Vòng bảng */}
+                      {match.stage?.startsWith('Bảng') && (
+                        <label className="flex items-center gap-2.5 cursor-pointer group select-none">
+                          <input
+                            type="radio"
+                            name="applyScope"
+                            value="group_stage"
+                            checked={tempApplyScope === 'group_stage'}
+                            onChange={() => setTempApplyScope('group_stage')}
+                            className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                          />
+                          <span className="text-[11px] font-medium text-muted-foreground group-hover:text-white transition-colors">
+                            Áp dụng cho <span className="text-amber-400 font-bold">tất cả các Bảng (Vòng bảng)</span>
+                          </span>
+                        </label>
+                      )}
+                    </div>
+                  </div>
+                </div>
 
                 {/* Footer Actions */}
                 <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">

@@ -52,6 +52,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
       id,
       prediction_choice,
       points_earned,
+      is_correct,
       created_at,
       matches:matches!predictions_match_id_fkey(
         id,
@@ -110,23 +111,24 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
 
   const getPointsBadge = (points: number | null) => {
     if (points === null) return null;
-    if (points === 3) {
+    if (points === 1) {
       return (
         <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-0.5 rounded-full">
-          Thắng kèo (+3đ)
+          Thắng kèo (+1đ)
         </span>
       );
     }
-    if (points === 1) {
+    // Điểm thua > 0 thì hiện badge amber
+    if (points > 0) {
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-cyan-400 bg-cyan-500/10 border border-cyan-500/20 px-2.5 py-0.5 rounded-full">
-          Hòa kèo (+1đ)
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+          Thua/Hòa kèo (+{new Intl.NumberFormat('en-US').format(points)}đ)
         </span>
       );
     }
     return (
       <span className="inline-flex items-center gap-1 text-[11px] font-bold text-muted-foreground bg-white/5 border border-white/5 px-2.5 py-0.5 rounded-full">
-        Thua kèo (0đ)
+        Thua/Hòa kèo (0đ)
       </span>
     );
   };
@@ -174,7 +176,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
               {/* Stats Box */}
               <div className="grid grid-cols-4 gap-4 sm:gap-6 bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5 text-center min-w-[280px] sm:min-w-[340px]">
                 <div className="flex flex-col">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-white">{profile.points}đ</span>
+                  <span className="text-xl sm:text-2xl font-mono font-black text-white">{new Intl.NumberFormat('en-US').format(profile.points)}đ</span>
                   <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Tổng điểm</span>
                 </div>
                 <div className="flex flex-col border-l border-white/5">
@@ -182,8 +184,8 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                   <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Thắng kèo</span>
                 </div>
                 <div className="flex flex-col border-l border-white/5">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-cyan-400">{profile.correct_outcomes_count}</span>
-                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Hòa kèo</span>
+                  <span className="text-xl sm:text-2xl font-mono font-black text-amber-400">{new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ</span>
+                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Điểm thua</span>
                 </div>
                 <div className="flex flex-col border-l border-white/5">
                   <span className="text-xl sm:text-2xl font-mono font-black text-white">{predictions.length}</span>
@@ -300,10 +302,11 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                       
                       // Tính toán background động dựa theo kết quả thắng/hòa/thua kèo (đậm hơn để tăng tương phản)
                       let cardBgClass = "bg-white/[0.02] border-white/5 hover:border-white/10";
-                      if (p.points_earned === 3) {
+                      if (p.is_correct === true || p.points_earned === 1) {
                         cardBgClass = "bg-emerald-500/[0.08] border-emerald-500/30 hover:bg-emerald-500/[0.12]";
-                      } else if (p.points_earned === 1) {
-                        cardBgClass = "bg-cyan-500/[0.08] border-cyan-500/30 hover:bg-cyan-500/[0.12]";
+                      } else if (p.points_earned !== null && p.points_earned > 0) {
+                        // Thua nhưng có điểm thua -> amber
+                        cardBgClass = "bg-amber-500/[0.08] border-amber-500/30 hover:bg-amber-500/[0.12]";
                       } else if (p.points_earned === 0) {
                         cardBgClass = "bg-red-500/[0.08] border-red-500/30 hover:bg-red-500/[0.12]";
                       }

@@ -179,7 +179,7 @@ export default function DashboardClient({
           <div className="grid grid-cols-3 gap-4">
             <div className="flex flex-col">
               <span className="text-2xl font-extrabold font-mono text-white">
-                {userProfile?.points || 0}
+                {new Intl.NumberFormat('en-US').format(userProfile?.points || 0)}
               </span>
               <span className="text-[10px] text-muted-foreground font-medium mt-0.5">Điểm số</span>
             </div>
@@ -422,8 +422,14 @@ export default function DashboardClient({
                       <div className="flex items-center gap-2 flex-shrink-0">
                         {renderPredictionChoice(match, pred)}
                         {match.status === 'FT' && (
-                          <span className={`font-mono font-bold ${pred.points_earned === 3 ? 'text-emerald-400' : 'text-muted-foreground'}`}>
-                            +{pred.points_earned || 0}đ
+                          <span className={`font-mono font-bold ${
+                            pred.points_earned === 1 
+                              ? 'text-emerald-400' 
+                              : pred.points_earned && pred.points_earned > 0 
+                                ? 'text-amber-400' 
+                                : 'text-muted-foreground'
+                          }`}>
+                            +{new Intl.NumberFormat('en-US').format(pred.points_earned || 0)}đ
                           </span>
                         )}
                       </div>

@@ -10,7 +10,7 @@ async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promis
     // Lấy tất cả dự đoán của user này đã được tính điểm
     const { data: userPreds, error: userPredsError } = await supabase
       .from('predictions')
-      .select('points_earned')
+      .select('points_earned, is_correct')
       .eq('user_id', userId)
       .not('points_earned', 'is', null);
 
@@ -19,17 +19,24 @@ async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promis
       continue;
     }
 
-    const totalPoints = userPreds.reduce((sum: number, p: any) => sum + (p.points_earned || 0), 0);
-    const exactCount = userPreds.filter((p: any) => p.points_earned === 3).length;
-    const correctOutcomeCount = userPreds.filter((p: any) => p.points_earned === 1).length;
+    // Số lần đoán đúng (is_correct = true)
+    const correctCount = userPreds.filter((p: any) => p.is_correct === true).length;
+    // Tổng điểm thua (chỉ tính các dự đoán sai)
+    const lossPoints = userPreds
+      .filter((p: any) => p.is_correct === false)
+      .reduce((sum: number, p: any) => sum + (p.points_earned || 0), 0);
+    // Tổng điểm = số lần đoán đúng (mỗi lần 1đ). Điểm thua không cộng dồn vào tổng điểm để xếp hạng
+    const totalPoints = correctCount;
 
     // Cập nhật profile của user
     const { error: profileError } = await supabase
       .from('profiles')
       .update({
         points: totalPoints,
-        exact_scores_count: exactCount,
-        correct_outcomes_count: correctOutcomeCount,
+        correct_predictions_count: correctCount,
+        exact_scores_count: correctCount,
+        total_loss_points: lossPoints,
+        correct_outcomes_count: 0,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);
@@ -140,7 +147,8 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
       if (!invalidPredsError && invalidPredictions && invalidPredictions.length > 0) {
         const resetUpdates = invalidPredictions.map(p => ({
           id: p.id,
-          points_earned: null
+          points_earned: null,
+          is_correct: null
         }));
 
         const { error: resetError } = await supabase
@@ -157,7 +165,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
     // 2. Lấy danh sách các trận đấu đã kết thúc (FT) và có tỉ số hợp lệ
     const { data: finishedMatches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, home_score, away_score, handicap_team, handicap_value')
+      .select('id, home_score, away_score, handicap_team, handicap_value, loss_points')
       .eq('status', 'FT');
 
     if (matchesError) {
@@ -188,18 +196,17 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
         const predictionsToUpdate = [];
         const handicapTeam = match.handicap_team || 'none';
         const handicapVal = Number(match.handicap_value || 0);
+        const lossPoints = Number(match.loss_points || 0);
 
         for (const p of predictions) {
-          let points = 0;
+          let isCorrect = false;
 
           if (handicapTeam === 'none' || handicapVal === 0) {
             // Cược Châu Âu (1X2)
             if (p.prediction_choice === 'home' && match.home_score > match.away_score) {
-              points = 3;
+              isCorrect = true;
             } else if (p.prediction_choice === 'away' && match.home_score < match.away_score) {
-              points = 3;
-            } else if (p.prediction_choice === 'draw' && match.home_score === match.away_score) {
-              points = 3;
+              isCorrect = true;
             }
           } else {
             // Cược chấp Handicap
@@ -213,11 +220,14 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
             }
 
             if (diff > 0 && p.prediction_choice === 'home') {
-              points = 3;
+              isCorrect = true;
             } else if (diff < 0 && p.prediction_choice === 'away') {
-              points = 3;
+              isCorrect = true;
             }
           }
+
+          // Đoán đúng -> 1đ, đoán sai -> loss_points
+          const points = isCorrect ? 1 : lossPoints;
 
           // Chỉ cập nhật nếu điểm mới tính khác điểm cũ trong DB (hoặc điểm cũ đang là null)
           if (p.points_earned !== points) {
@@ -226,7 +236,8 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
               user_id: p.user_id,
               match_id: match.id,
               prediction_choice: p.prediction_choice,
-              points_earned: points
+              points_earned: points,
+              is_correct: isCorrect
             });
             affectedUserIds.add(p.user_id);
           }

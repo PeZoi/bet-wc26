@@ -71,8 +71,8 @@ export default function LeaderboardTable({
           <tr className="border-b border-white/5 text-xs font-bold text-muted-foreground uppercase tracking-wider bg-white/[0.01]">
             <th className="py-4 px-6 text-center w-16">Hạng</th>
             <th className="py-4 px-6">Thành viên</th>
-            <th className="py-4 px-6 text-center">Thắng Kèo (+3đ)</th>
-            <th className="py-4 px-6 text-center">Hòa Kèo (+1đ)</th>
+            <th className="py-4 px-6 text-center">Đoán Đúng (+1đ)</th>
+            <th className="py-4 px-6 text-center">Điểm Thua</th>
             <th className="py-4 px-6 text-right font-bold text-primary">Tổng Điểm</th>
           </tr>
         </thead>
@@ -129,20 +129,20 @@ export default function LeaderboardTable({
                   </Link>
                 </td>
 
-                {/* Exact Scores Count */}
-                <td className="py-4 px-6 text-center font-mono text-sm">
+                {/* Exact Scores Count (Đoán Đúng) */}
+                <td className="py-4 px-6 text-center font-mono text-sm text-emerald-400 font-bold">
                   {profile.exact_scores_count}
                 </td>
 
-                {/* Correct Outcomes Count */}
-                <td className="py-4 px-6 text-center font-mono text-sm">
-                  {profile.correct_outcomes_count}
+                {/* Điểm Thua tích lũy */}
+                <td className="py-4 px-6 text-center font-mono text-sm text-amber-400 font-bold">
+                  {new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ
                 </td>
 
                 {/* Total Points */}
                 <td className="py-4 px-6 text-right">
                   <span className="font-mono text-base font-extrabold text-primary bg-primary/10 px-3 py-1 rounded-full border border-primary/20">
-                    {profile.points}đ
+                    {new Intl.NumberFormat('en-US').format(profile.points)}đ
                   </span>
                 </td>
               </motion.tr>

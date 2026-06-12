@@ -63,6 +63,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
       id,
       prediction_choice,
       points_earned,
+      is_correct,
       created_at,
       user_id,
       profiles:profiles!predictions_user_id_fkey(display_name, avatar_url)
@@ -80,6 +81,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
         id,
         prediction_choice,
         points_earned,
+        is_correct,
         created_at,
         user_id,
         profiles:profiles!predictions_user_id_fkey(display_name, avatar_url)
@@ -361,8 +363,14 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                           <span className="font-bold text-white truncate group-hover:underline">{p.profiles?.display_name || 'Người chơi'}</span>
                         </Link>
                         {match.status === 'FT' && p.points_earned !== null && (
-                          <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${p.points_earned === 3 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-muted-foreground border border-white/5'}`}>
-                            {p.points_earned === 3 ? '+3đ' : '0đ'}
+                          <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                            p.points_earned === 1 
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' 
+                              : p.points_earned > 0 
+                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                : 'bg-white/5 text-muted-foreground border border-white/5'
+                          }`}>
+                            {p.points_earned === 1 ? '+1đ' : p.points_earned > 0 ? `+${new Intl.NumberFormat('en-US').format(p.points_earned)}đ` : '0đ'}
                           </span>
                         )}
                       </div>
@@ -398,8 +406,14 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                           <span className="font-bold text-white truncate group-hover:underline">{p.profiles?.display_name || 'Người chơi'}</span>
                         </Link>
                         {match.status === 'FT' && p.points_earned !== null && (
-                          <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${p.points_earned === 3 ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' : 'bg-white/5 text-muted-foreground border border-white/5'}`}>
-                            {p.points_earned === 3 ? '+3đ' : '0đ'}
+                          <span className={`font-mono font-bold px-2 py-0.5 rounded text-[10px] ${
+                            p.points_earned === 1 
+                              ? 'bg-emerald-500/15 text-emerald-400 border border-emerald-500/20' 
+                              : p.points_earned > 0 
+                                ? 'bg-amber-500/15 text-amber-400 border border-amber-500/20'
+                                : 'bg-white/5 text-muted-foreground border border-white/5'
+                          }`}>
+                            {p.points_earned === 1 ? '+1đ' : p.points_earned > 0 ? `+${new Intl.NumberFormat('en-US').format(p.points_earned)}đ` : '0đ'}
                           </span>
                         )}
                       </div>

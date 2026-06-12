@@ -13,6 +13,7 @@ import { useDialog } from '@/components/ui/dialog-custom';
 interface MatchesListProps {
   initialMatches: Match[];
   initialPredictions: Prediction[];
+  allPredictions?: any[];
   isLoggedIn: boolean;
   isAdmin?: boolean;
 }
@@ -20,6 +21,7 @@ interface MatchesListProps {
 export default function MatchesList({
   initialMatches,
   initialPredictions,
+  allPredictions = [],
   isLoggedIn,
   isAdmin = false
 }: MatchesListProps) {
@@ -27,6 +29,7 @@ export default function MatchesList({
   const { showAlert } = useDialog();
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'finished' | 'upcoming'>('all');
   const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
   const predictions = initialPredictions;
   const [isSyncing, setIsSyncing] = useState(false);
@@ -86,6 +89,14 @@ export default function MatchesList({
       selectedStage === 'all' ||
       match.stage.toLowerCase().includes(selectedStage.toLowerCase());
 
+    // Status Filter
+    let statusMatch = true;
+    if (statusFilter === 'finished') {
+      statusMatch = match.status === 'FT' || match.status === 'LIVE';
+    } else if (statusFilter === 'upcoming') {
+      statusMatch = match.status === 'NS';
+    }
+
     // Search Term Filter (Team name match)
     const searchMatch =
       match.home_team.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -104,7 +115,7 @@ export default function MatchesList({
     );
     const opponentsDetermined = !isHomePlaceholder && !isAwayPlaceholder && match.home_team.trim() !== '' && match.away_team.trim() !== '';
 
-    return stageMatch && searchMatch && opponentsDetermined;
+    return stageMatch && statusMatch && searchMatch && opponentsDetermined;
   });
 
   // Prepare tournament bracket data
@@ -191,27 +202,57 @@ export default function MatchesList({
 
         {/* Row 2: Filters (only in list mode) */}
         {viewMode === 'list' && (
-          <div className="border-t border-white/5 pt-4 flex flex-col md:flex-row md:items-center gap-3">
-            <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0">
-              <Filter className="h-3.5 w-3.5" />
-              <span>Bộ lọc:</span>
+          <div className="border-t border-white/5 pt-4 space-y-4">
+            {/* Filter by Match Status */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0 sm:w-20">
+                <Filter className="h-3.5 w-3.5 text-primary" />
+                <span>Trạng thái:</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5">
+                {[
+                  { value: 'all', label: 'Tất cả' },
+                  { value: 'finished', label: 'Đã diễn ra' },
+                  { value: 'upcoming', label: 'Chưa diễn ra' }
+                ].map((statusOpt) => (
+                  <button
+                    key={statusOpt.value}
+                    onClick={() => setStatusFilter(statusOpt.value as 'all' | 'finished' | 'upcoming')}
+                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
+                      statusFilter === statusOpt.value
+                        ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-primary/20 shadow-md shadow-primary/10'
+                        : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
+                    }`}
+                  >
+                    {statusOpt.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            
-            {/* Scrollable container on mobile, wrapped on larger screens */}
-            <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
-              {stages.map((stage) => (
-                <button
-                  key={stage.value}
-                  onClick={() => setSelectedStage(stage.value)}
-                  className={`text-xs font-bold py-2 px-3.5 rounded-lg border transition-all cursor-pointer whitespace-nowrap ${
-                    selectedStage === stage.value
-                      ? 'bg-primary text-primary-foreground border-primary shadow-sm shadow-primary/20'
-                      : 'bg-background/40 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/5'
-                  }`}
-                >
-                  {stage.label}
-                </button>
-              ))}
+
+            {/* Filter by Tournament Stage */}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-2 border-t border-white/[0.03] pt-3.5">
+              <div className="flex items-center gap-1.5 text-xs text-muted-foreground flex-shrink-0 sm:w-20">
+                <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+                <span>Vòng đấu:</span>
+              </div>
+              
+              {/* Scrollable container on mobile, wrapped on larger screens */}
+              <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
+                {stages.map((stage) => (
+                  <button
+                    key={stage.value}
+                    onClick={() => setSelectedStage(stage.value)}
+                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
+                      selectedStage === stage.value
+                        ? 'bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5'
+                        : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
+                    }`}
+                  >
+                    {stage.label}
+                  </button>
+                ))}
+              </div>
             </div>
           </div>
         )}
@@ -230,6 +271,7 @@ export default function MatchesList({
                 <MatchCard
                   match={match}
                   userPrediction={predictionMap.get(match.id)}
+                  matchPredictions={allPredictions.filter(p => p.match_id === match.id)}
                   onPredictClick={handlePredictClick}
                   isLoggedIn={isLoggedIn}
                   isAdmin={isAdmin}

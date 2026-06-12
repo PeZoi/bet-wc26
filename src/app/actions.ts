@@ -80,7 +80,9 @@ export async function updateMatchScoreAdmin(
   awayScore: number,
   status: 'NS' | 'LIVE' | 'FT',
   handicapTeam: 'home' | 'away' | 'none',
-  handicapValue: number
+  handicapValue: number,
+  lossPoints: number = 0,
+  applyScope: 'match' | 'stage' | 'group_stage' = 'match'
 ) {
   try {
     const supabase = await createClient();
@@ -105,7 +107,7 @@ export async function updateMatchScoreAdmin(
     // Check if match is already finished to prevent updates
     const { data: match, error: fetchError } = await adminSupabase
       .from('matches')
-      .select('status')
+      .select('status, stage')
       .eq('id', matchId)
       .single();
 
@@ -113,8 +115,33 @@ export async function updateMatchScoreAdmin(
       return { success: false, message: 'Không tìm thấy trận đấu.' };
     }
 
-    if (match.status === 'FT') {
-      return { success: false, message: 'Trận đấu đã kết thúc, không thể chỉnh sửa.' };
+    // Áp dụng điểm thua cho toàn bộ trận đấu cùng vòng (stage)
+    if (applyScope === 'stage' && match.stage) {
+      const { error: stageUpdateError } = await adminSupabase
+        .from('matches')
+        .update({
+          loss_points: lossPoints,
+          updated_at: new Date().toISOString()
+        })
+        .eq('stage', match.stage);
+
+      if (stageUpdateError) {
+        console.error('Lỗi cập nhật loss_points theo stage:', stageUpdateError);
+      }
+    }
+    // Áp dụng điểm thua cho toàn bộ các trận Vòng bảng (Group Stage)
+    else if (applyScope === 'group_stage') {
+      const { error: groupUpdateError } = await adminSupabase
+        .from('matches')
+        .update({
+          loss_points: lossPoints,
+          updated_at: new Date().toISOString()
+        })
+        .like('stage', 'Bảng %');
+
+      if (groupUpdateError) {
+        console.error('Lỗi cập nhật loss_points cho toàn bộ Vòng bảng:', groupUpdateError);
+      }
     }
 
     const { error: updateError } = await adminSupabase
@@ -125,6 +152,7 @@ export async function updateMatchScoreAdmin(
         status: status,
         handicap_team: handicapTeam,
         handicap_value: handicapValue,
+        loss_points: lossPoints,
         updated_at: new Date().toISOString()
       })
       .eq('id', matchId);

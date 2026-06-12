@@ -5,6 +5,8 @@ export interface Profile {
   points: number;
   exact_scores_count: number;
   correct_outcomes_count: number;
+  total_loss_points?: number;
+  correct_predictions_count?: number;
   updated_at: string;
 }
 
@@ -22,6 +24,7 @@ export interface Match {
   updated_at: string;
   handicap_team?: 'home' | 'away' | 'none' | null;
   handicap_value?: number;
+  loss_points?: number;
   home_scorers?: string | null;
   away_scorers?: string | null;
 }
@@ -34,6 +37,7 @@ export interface Prediction {
   predicted_away_score?: number | null;
   prediction_choice: 'home' | 'away' | 'draw';
   points_earned: number | null;
+  is_correct?: boolean | null;
   created_at: string;
   profiles?: Profile;
 }
