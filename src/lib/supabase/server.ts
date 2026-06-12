@@ -68,7 +68,11 @@ export const createClient = async (): Promise<SupabaseClient> => {
 
 export const createAdminClient = (): SupabaseClient => {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!serviceRoleKey) {
+    console.warn("⚠️ WARNING: SUPABASE_SERVICE_ROLE_KEY is not defined. Falling back to ANON_KEY. RLS will restrict prediction queries.");
+  }
+  const serviceKey = serviceRoleKey || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY;
 
   // Safeguard against build-time or empty env variables
   if (!url || !url.startsWith('http') || url.includes('your_supabase') || !serviceKey || serviceKey.includes('here')) {

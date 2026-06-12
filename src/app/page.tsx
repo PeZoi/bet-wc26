@@ -1,6 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
-import { createClient } from '@/lib/supabase/server';
+import { createClient, createAdminClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import MatchCard from '@/components/match-card';
 import { Trophy, ArrowRight, ShieldCheck, Flame, Star } from 'lucide-react';
@@ -13,6 +13,7 @@ export default async function LandingPage() {
   let matches: Match[] = [];
   let profiles: Profile[] = [];
   let predictions: Prediction[] = [];
+  let allPredictions: any[] = [];
   let user: User | null = null;
   let isLoggedIn = false;
   let isAdmin = false;
@@ -31,6 +32,7 @@ export default async function LandingPage() {
     const { data: dbMatches } = await supabase
       .from('matches')
       .select('*')
+      .eq('status', 'NS')
       .order('match_time', { ascending: true })
       .limit(3);
     
@@ -45,6 +47,13 @@ export default async function LandingPage() {
       predictions = dbPredictions || [];
     }
 
+    // Fetch all predictions for all users to show who has bet (Avatar Stack)
+    const adminSupabase = createAdminClient();
+    const { data: dbAllPredictions } = await adminSupabase
+      .from("predictions")
+      .select("match_id, user_id, prediction_choice, profiles:profiles!predictions_user_id_fkey(avatar_url, display_name)");
+    allPredictions = dbAllPredictions || [];
+
     // Fetch top 3 leaderboards
     const { data: dbProfiles } = await supabase
       .from('profiles')
@@ -57,6 +66,7 @@ export default async function LandingPage() {
   } catch (error) {
     console.error('Database connection failed:', error);
     matches = [];
+    allPredictions = [];
     profiles = [
       { id: '1', display_name: 'Minh Hoàng', points: 12, avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=hoang' },
       { id: '2', display_name: 'Thanh Thảo', points: 9, avatar_url: 'https://api.dicebear.com/7.x/bottts/svg?seed=thao' },
@@ -183,6 +193,7 @@ export default async function LandingPage() {
                   <MatchCard
                     match={match}
                     userPrediction={userPred}
+                    matchPredictions={allPredictions.filter(p => p.match_id === match.id)}
                     isLoggedIn={isLoggedIn}
                     isAdmin={isAdmin}
                   />
