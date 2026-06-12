@@ -2,7 +2,6 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import LeaderboardTable from '@/components/leaderboard-table';
-import { autoSyncThrottled } from '@/lib/sync';
 import { Profile } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -12,9 +11,6 @@ export default async function LeaderboardPage() {
   let currentUserId: string | undefined = undefined;
 
   try {
-    // Automatically trigger throttled sync (max once per 10 minutes)
-    await autoSyncThrottled();
-
     const supabase = await createClient();
     
     // Get current user if logged in

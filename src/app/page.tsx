@@ -4,7 +4,6 @@ import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import MatchCard from '@/components/match-card';
 import { Trophy, ArrowRight, ShieldCheck, Flame, Star } from 'lucide-react';
-import { autoSyncThrottled } from '@/lib/sync';
 import { Match, Profile, Prediction } from '@/types';
 import { User } from '@supabase/supabase-js';
 
@@ -19,9 +18,6 @@ export default async function LandingPage() {
   let isAdmin = false;
 
   try {
-    // Automatically trigger throttled sync (max once per 10 minutes)
-    await autoSyncThrottled();
-
     const supabase = await createClient();
     const { data: { user: currentUser } } = await supabase.auth.getUser();
     user = currentUser;

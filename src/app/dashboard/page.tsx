@@ -2,7 +2,6 @@ import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import DashboardClient from './dashboard-client';
-import { autoSyncThrottled } from '@/lib/sync';
 import { Match, Prediction, Profile } from '@/types';
 
 export const dynamic = 'force-dynamic';
@@ -16,9 +15,6 @@ export default async function DashboardPage() {
   let isLoggedIn = false;
 
   try {
-    // Automatically trigger throttled sync (max once per 10 minutes)
-    await autoSyncThrottled();
-
     const supabase = await createClient();
     const { data: { user } } = await supabase.auth.getUser();
 

@@ -1,7 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
-import { autoSyncThrottled } from '@/lib/sync';
 import TeamsClient, { Team } from './teams-client';
 
 export const dynamic = 'force-dynamic';
@@ -10,9 +9,6 @@ export default async function TeamsPage() {
   let teams: Team[] = [];
 
   try {
-    // Automatically trigger throttled sync (max once per 10 minutes)
-    await autoSyncThrottled();
-
     const supabase = await createClient();
     
     // Fetch all matches to extract teams dynamically

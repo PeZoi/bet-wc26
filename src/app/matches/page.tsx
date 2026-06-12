@@ -1,7 +1,6 @@
 import React from "react";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Navbar from "@/components/navbar";
-import { autoSyncThrottled } from "@/lib/sync";
 import MatchesList from "./matches-list";
 import { Match, Prediction } from "@/types";
 import { User } from "@supabase/supabase-js";
@@ -17,9 +16,6 @@ export default async function MatchesPage() {
 	let isAdmin = false;
 
 	try {
-		// Automatically trigger throttled sync (max once per 10 minutes)
-		await autoSyncThrottled();
-
 		const supabase = await createClient();
 		const {
 			data: { user: currentUser },

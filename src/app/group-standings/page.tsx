@@ -1,7 +1,6 @@
 import React from 'react';
 import { createClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
-import { autoSyncThrottled } from '@/lib/sync';
 import GroupStandingsClient from './group-standings-client';
 import { Match, Prediction } from '@/types';
 import { Globe } from 'lucide-react';
@@ -34,9 +33,6 @@ export default async function GroupStandingsPage() {
   let isAdmin = false;
 
   try {
-    // Automatically trigger throttled sync (max once per 10 minutes)
-    await autoSyncThrottled();
-
     const supabase = await createClient();
 
     // Fetch auth status & role
