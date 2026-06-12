@@ -105,6 +105,7 @@ export default function LeaderboardTable({
                 <td className="py-4 px-6">
                   <Link 
                     href={`/users/${profile.id}`} 
+                    prefetch={true}
                     className="flex items-center gap-3 hover:text-primary transition-colors cursor-pointer group w-max max-w-full"
                   >
                     <img

@@ -307,6 +307,7 @@ export default function MatchCard({
                   ) : (
                     <Link
                       href="/matches"
+                      prefetch={true}
                       className="p-1.5 text-primary hover:bg-primary/10 rounded-lg transition-colors cursor-pointer"
                       title="Sửa dự đoán"
                     >
@@ -337,6 +338,7 @@ export default function MatchCard({
               ) : (
                 <Link
                   href="/matches"
+                  prefetch={true}
                   className="w-full flex items-center justify-center gap-2 rounded-xl border border-primary/30 bg-primary/10 hover:bg-primary/20 py-2.5 text-sm font-semibold text-primary hover:scale-[1.02] active:scale-[0.98] transition-all cursor-pointer"
                 >
                   <Edit3 className="h-4 w-4" />
@@ -356,6 +358,7 @@ export default function MatchCard({
       <div className="mt-4 border-t border-white/5 pt-3 flex justify-center">
         <Link
           href={`/matches/${match.id}`}
+          prefetch={true}
           className="text-[11px] font-bold text-muted-foreground hover:text-primary transition-colors flex items-center gap-1 cursor-pointer"
         >
           Chi tiết trận đấu & Dự đoán khác →

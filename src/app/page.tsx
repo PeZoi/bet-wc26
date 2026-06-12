@@ -98,6 +98,7 @@ export default async function LandingPage() {
               <div className="flex flex-wrap gap-4 pt-2">
                 <Link
                   href={isLoggedIn ? "/dashboard" : "/dashboard"}
+                  prefetch={true}
                   className="flex items-center gap-2 rounded-xl bg-primary px-6 py-3.5 text-sm font-semibold text-primary-foreground hover:bg-primary/95 transition-all shadow-lg shadow-primary/25 cursor-pointer"
                 >
                   Tham gia ngay
@@ -105,6 +106,7 @@ export default async function LandingPage() {
                 </Link>
                 <Link
                   href="/rules"
+                  prefetch={true}
                   className="rounded-xl border border-white/10 bg-white/5 px-6 py-3.5 text-sm font-semibold text-white hover:bg-white/10 transition-all cursor-pointer"
                 >
                   Xem thể lệ tính điểm
@@ -169,6 +171,7 @@ export default async function LandingPage() {
             </div>
             <Link
               href="/matches"
+              prefetch={true}
               className="flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
             >
               Xem tất cả trận đấu

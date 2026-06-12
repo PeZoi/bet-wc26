@@ -69,7 +69,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
     `)
     .eq('match_id', matchId);
 
-  let predictions = (predictionsData || []) as (Prediction & { profiles: Profile })[];
+  let predictions = (predictionsData || []) as unknown as (Prediction & { profiles: Profile })[];
 
   // Fallback: Nếu không lấy được gì (ví dụ do thiếu service_role key ở local) 
   // và người dùng hiện tại đã đăng nhập, hãy dùng client thường lấy dự đoán của chính họ.
@@ -88,7 +88,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
       .eq('user_id', currentUserId);
       
     if (myPred && myPred.length > 0) {
-      predictions = myPred as (Prediction & { profiles: Profile })[];
+      predictions = myPred as unknown as (Prediction & { profiles: Profile })[];
     }
   }
 
@@ -131,6 +131,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
         {/* Back Link */}
         <Link 
           href="/matches" 
+          prefetch={true}
           className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary transition-colors mb-6 cursor-pointer"
         >
           <ChevronLeft className="h-4 w-4" />
@@ -349,6 +350,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                       <div key={p.id} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl p-2.5 text-xs hover:bg-white/[0.04] transition-colors">
                         <Link 
                           href={`/users/${p.user_id}`} 
+                          prefetch={true}
                           className="flex items-center gap-2 min-w-0 hover:text-primary transition-colors cursor-pointer group"
                         >
                           <img 
@@ -385,6 +387,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                       <div key={p.id} className="flex items-center justify-between bg-white/[0.02] border border-white/5 rounded-xl p-2.5 text-xs hover:bg-white/[0.04] transition-colors">
                         <Link 
                           href={`/users/${p.user_id}`} 
+                          prefetch={true}
                           className="flex items-center gap-2 min-w-0 hover:text-primary transition-colors cursor-pointer group"
                         >
                           <img 

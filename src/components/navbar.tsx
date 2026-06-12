@@ -131,6 +131,7 @@ export default function Navbar() {
 								<Link
 									key={item.href}
 									href={item.href}
+									prefetch={true}
 									className={`flex items-center gap-1.5 text-xs font-bold transition-all duration-200 py-1.5 px-2.5 rounded-full whitespace-nowrap ${
 										active
 											? "bg-primary/10 text-primary border border-primary/20"
@@ -221,6 +222,7 @@ export default function Navbar() {
 							<Link
 								key={item.href}
 								href={item.href}
+								prefetch={true}
 								onClick={() => setMobileMenuOpen(false)}
 								className={`flex items-center gap-3 px-4 py-3 rounded-lg text-base font-medium transition-colors ${
 									active

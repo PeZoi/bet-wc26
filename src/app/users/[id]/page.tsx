@@ -139,6 +139,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
         {/* Back to Leaderboard */}
         <Link 
           href="/leaderboard" 
+          prefetch={true}
           className="inline-flex items-center gap-1 text-xs font-bold text-muted-foreground hover:text-primary transition-colors mb-6 cursor-pointer"
         >
           <ChevronLeft className="h-4 w-4" />
