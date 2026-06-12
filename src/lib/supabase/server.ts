@@ -108,6 +108,14 @@ export const createAdminClient = (): SupabaseClient => {
     cookies: {
       getAll() { return []; },
       setAll() {}
-    }
+    },
+    global: {
+      fetch: (url, options) => {
+        return fetch(url, {
+          ...options,
+          cache: 'no-store',
+        });
+      },
+    },
   });
 };
