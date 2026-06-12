@@ -4,7 +4,7 @@ import Navbar from '@/components/navbar';
 import { translateTeamName } from '@/lib/translator';
 import TeamName from '@/components/team-name';
 import TeamLogo from '@/components/team-logo';
-import { ChevronLeft, Calendar, Trophy, Target, Award, CheckCircle2 } from 'lucide-react';
+import { ChevronLeft, Calendar, Trophy, Target, Award, CheckCircle2, Star, TrendingDown, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Profile, Match } from '@/types';
@@ -80,6 +80,10 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const finishedPredictions = predictions.filter(p => p.matches?.status === 'FT');
   const activePredictions = predictions.filter(p => p.matches?.status !== 'FT');
 
+  const winRate = finishedPredictions.length > 0
+    ? Math.round((profile.exact_scores_count || 0) / finishedPredictions.length * 100)
+    : 0;
+
   // Helpers
   const getPredictionChoiceText = (p: PredictionWithMatch) => {
     const choice = p.prediction_choice;
@@ -150,48 +154,107 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
 
         <div className="space-y-8">
           {/* User Profile Banner (Premium Glassmorphism Card) */}
-          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-card/30 p-6 sm:p-8 backdrop-blur-md shadow-2xl">
+          <div className="relative overflow-hidden rounded-[32px] border border-white/10 bg-gradient-to-br from-[#0d1220]/80 to-[#141923]/60 p-6 sm:p-8 backdrop-blur-md shadow-2xl shadow-black/50">
             {/* Background Glow */}
             <div className="absolute -left-20 -top-20 h-60 w-60 rounded-full bg-primary/10 blur-[100px] pointer-events-none" />
             <div className="absolute -right-20 -bottom-20 h-60 w-60 rounded-full bg-cyan-500/10 blur-[100px] pointer-events-none" />
 
-            <div className="flex flex-col sm:flex-row items-center gap-6 sm:justify-between relative z-10">
-              {/* Avatar & Display Name */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 text-center sm:text-left">
-                <div className="h-20 w-20 rounded-full overflow-hidden border-2 border-primary/30 shadow-lg bg-white/5 flex items-center justify-center">
-                  <img
-                    src={avatarUrl}
-                    alt={profile.display_name}
-                    className="h-full w-full object-cover"
-                  />
+            <div className="flex flex-col md:flex-row items-center gap-8 justify-between relative z-10">
+              
+              {/* Left Column: Avatar & Profile Info */}
+              <div className="flex flex-col sm:flex-row items-center gap-5 text-center sm:text-left">
+                {/* Avatar with Glow Ring */}
+                <div className="relative group/avatar">
+                  <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary via-emerald-500 to-cyan-500 opacity-20 blur-md group-hover/avatar:opacity-40 transition-opacity duration-300" />
+                  <div className="h-20 w-20 rounded-full overflow-hidden border border-white/10 bg-[#11141d] flex items-center justify-center relative z-10 shadow-xl transition-transform duration-300 group-hover/avatar:scale-105 ring-4 ring-white/5">
+                    <img
+                      src={avatarUrl}
+                      alt={profile.display_name}
+                      className="h-full w-full object-cover"
+                    />
+                  </div>
                 </div>
-                <div className="space-y-1">
-                  <h1 className="text-xl sm:text-2xl font-black text-white">{profile.display_name}</h1>
-                  <span className="inline-flex items-center text-xs font-bold text-primary bg-primary/10 border border-primary/20 px-3 py-1 rounded-full uppercase tracking-wider">
-                    Thứ hạng #{rank}
-                  </span>
+                
+                <div className="space-y-2.5">
+                  <h1 className="text-2xl sm:text-3xl font-black tracking-tight text-white bg-gradient-to-r from-white via-white to-white/70 bg-clip-text select-text">{profile.display_name}</h1>
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2">
+                    <span className="inline-flex items-center gap-1.5 text-[10px] font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3.5 py-1 rounded-full uppercase tracking-wider shadow-sm select-none">
+                      <Trophy className="h-3.5 w-3.5 fill-amber-500/10" />
+                      Thứ hạng #{rank}
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-[10px] font-black text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-3 py-1 rounded-full uppercase tracking-wider select-none">
+                      Thành viên
+                    </span>
+                  </div>
                 </div>
               </div>
 
-              {/* Stats Box */}
-              <div className="grid grid-cols-4 gap-4 sm:gap-6 bg-white/[0.02] border border-white/5 rounded-2xl p-4 sm:p-5 text-center min-w-[280px] sm:min-w-[340px]">
-                <div className="flex flex-col">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-white">{new Intl.NumberFormat('en-US').format(profile.points)}đ</span>
-                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Tổng điểm</span>
+              {/* Right Column: Hierarchical Stats Box (Bento Style) */}
+              <div className="flex flex-col gap-3.5 w-full md:w-auto max-w-md">
+                
+                {/* Top Row: Primary Cards (Total Points & Accuracy) */}
+                <div className="grid grid-cols-2 gap-3.5 w-full">
+                  {/* Total Points */}
+                  <div className="relative overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-2xl p-4 flex flex-col justify-between h-22 transition-all duration-300 group">
+                    <div className="absolute right-2 top-2 text-white/[0.02] group-hover:text-amber-500/5 transition-colors pointer-events-none">
+                      <Star className="h-10 w-10" />
+                    </div>
+                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Tổng điểm</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-white mt-1.5">
+                      {new Intl.NumberFormat('en-US').format(profile.points)}đ
+                    </span>
+                  </div>
+                  
+                  {/* Win Rate */}
+                  <div className="relative overflow-hidden bg-white/[0.02] border border-white/5 hover:border-white/10 rounded-2xl p-4 flex flex-col justify-between h-22 transition-all duration-300 group">
+                    <div className="absolute right-2 top-2 text-white/[0.02] group-hover:text-emerald-500/5 transition-colors pointer-events-none">
+                      <TrendingUp className="h-10 w-10" />
+                    </div>
+                    <span className="text-[9px] text-muted-foreground font-black uppercase tracking-wider">Tỉ lệ đúng</span>
+                    <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 mt-1.5">
+                      {winRate}%
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col border-l border-white/5">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-emerald-400">{profile.exact_scores_count}</span>
-                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Thắng kèo</span>
+
+                {/* Bottom Row: Detailed Stats Banner */}
+                <div className="grid grid-cols-3 gap-1 bg-[#090d16]/60 border border-white/5 rounded-2xl p-3.5">
+                  {/* Thắng kèo */}
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <Trophy className="h-3 w-3 text-emerald-400" />
+                      Thắng kèo
+                    </span>
+                    <span className="text-sm sm:text-base font-black font-mono text-white mt-1">
+                      {profile.exact_scores_count}
+                    </span>
+                  </div>
+                  
+                  {/* Điểm thua */}
+                  <div className="flex flex-col items-center justify-center text-center border-x border-white/5 px-2">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <TrendingDown className="h-3 w-3 text-amber-500" />
+                      Điểm thua
+                    </span>
+                    <span className="text-sm sm:text-base font-black font-mono text-amber-500 mt-1 truncate max-w-full">
+                      {new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ
+                    </span>
+                  </div>
+
+                  {/* Đã cược */}
+                  <div className="flex flex-col items-center justify-center text-center">
+                    <span className="text-[9px] font-black text-muted-foreground uppercase tracking-wider flex items-center gap-1">
+                      <Target className="h-3 w-3 text-cyan-400" />
+                      Đã cược
+                    </span>
+                    <span className="text-sm sm:text-base font-black font-mono text-white mt-1">
+                      {predictions.length}
+                    </span>
+                  </div>
                 </div>
-                <div className="flex flex-col border-l border-white/5">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-amber-400">{new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ</span>
-                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Điểm thua</span>
-                </div>
-                <div className="flex flex-col border-l border-white/5">
-                  <span className="text-xl sm:text-2xl font-mono font-black text-white">{predictions.length}</span>
-                  <span className="text-[10px] text-muted-foreground font-semibold mt-0.5">Đã cược</span>
-                </div>
+
               </div>
+
             </div>
           </div>
 
