@@ -340,7 +340,7 @@ export default function GroupStandingsClient({
                               {formattedDate} - {formattedTime}
                               {Number(match.loss_points || 0) > 0 && (
                                 <span className="text-[8px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1.5 py-0.5 rounded-full select-none ml-1.5">
-                                  Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points)}đ
+                                  Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
                                 </span>
                               )}
                             </span>

@@ -260,7 +260,7 @@ export default function MatchCard({
           </span>
           {Number(match.loss_points || 0) > 0 && (
             <span className="text-[10px] font-extrabold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full select-none" title="Điểm cộng khi dự đoán sai trận này">
-              Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points)}đ
+              Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
             </span>
           )}
           {isAdmin && (
