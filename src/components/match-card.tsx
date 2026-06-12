@@ -126,11 +126,13 @@ export default function MatchCard({
   const formattedTime = new Date(match.match_time).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: 'Asia/Ho_Chi_Minh',
   });
 
   const formattedDate = new Date(match.match_time).toLocaleDateString('vi-VN', {
     day: 'numeric',
     month: 'long',
+    timeZone: 'Asia/Ho_Chi_Minh',
   });
 
   const renderPredictionChoice = () => {

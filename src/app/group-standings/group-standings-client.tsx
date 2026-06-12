@@ -309,10 +309,12 @@ export default function GroupStandingsClient({
                       const formattedTime = matchTime.toLocaleTimeString('vi-VN', {
                         hour: '2-digit',
                         minute: '2-digit',
+                        timeZone: 'Asia/Ho_Chi_Minh',
                       });
                       const formattedDate = matchTime.toLocaleDateString('vi-VN', {
                         day: 'numeric',
                         month: 'short',
+                        timeZone: 'Asia/Ho_Chi_Minh',
                       });
 
                       const isFinished = match.status === 'FT';

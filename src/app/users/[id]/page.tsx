@@ -227,7 +227,8 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                         day: 'numeric',
                         month: 'long',
                         hour: '2-digit',
-                        minute: '2-digit'
+                        minute: '2-digit',
+                        timeZone: 'Asia/Ho_Chi_Minh'
                       });
 
                       return (

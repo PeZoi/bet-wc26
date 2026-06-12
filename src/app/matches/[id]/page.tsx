@@ -117,12 +117,14 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
     weekday: 'long',
     day: 'numeric',
     month: 'long',
-    year: 'numeric'
+    year: 'numeric',
+    timeZone: 'Asia/Ho_Chi_Minh'
   });
 
   const matchTime = new Date(match.match_time).toLocaleTimeString('vi-VN', {
     hour: '2-digit',
-    minute: '2-digit'
+    minute: '2-digit',
+    timeZone: 'Asia/Ho_Chi_Minh'
   });
 
   return (
