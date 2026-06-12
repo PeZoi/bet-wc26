@@ -8,6 +8,7 @@ import { ChevronLeft, Calendar, MapPin, Trophy, Target, Users, HelpCircle } from
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Profile } from '@/types';
+import MatchCountdown from '@/components/match-countdown';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,9 +214,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                       <span className="text-2xl sm:text-3xl font-black font-mono tracking-tight text-white">
                         VS
                       </span>
-                      <span className="text-[10px] text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 px-2.5 py-0.5 rounded-full mt-2 font-bold uppercase tracking-wider">
-                        Sắp đá
-                      </span>
+                      <MatchCountdown matchTime={match.match_time} />
                     </div>
                   )}
                 </div>
