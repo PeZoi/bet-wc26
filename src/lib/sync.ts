@@ -41,9 +41,9 @@ const STADIUM_OFFSETS: Record<string, number> = {
   '16': -7, // SoFi Stadium (Los Angeles) -> PDT (UTC-7)
 };
 
-// Axios instance optimized for API sync: timeout 5s, browser User-Agent, and bypassed SSL checks
+// Axios instance optimized for API sync: timeout 15s, browser User-Agent, and bypassed SSL checks
 const axiosInstance = axios.create({
-  timeout: 5000,
+  timeout: 15000,
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*'
@@ -52,6 +52,8 @@ const axiosInstance = axios.create({
     rejectUnauthorized: false // Bỏ qua xác thực chứng chỉ SSL (tối quan trọng cho domain .ir trên local Node.js)
   })
 });
+
+const CORSPROXY_KEY = process.env.CORSPROXY_KEY || 'ebfba0cb';
 
 /**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
@@ -67,11 +69,15 @@ export async function syncMatchesHelper() {
     // 1. Fetch Teams for Flags mapping
     let teamsResponse;
     try {
-      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams');
+      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams', { timeout: 15000 });
     } catch (err) {
       console.warn('Direct fetch teams failed, trying proxy...', err instanceof Error ? err.message : String(err));
-      // Fallback proxy nếu cả mạng local bị chặn hoàn toàn
-      teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 8000 });
+      try {
+        teamsResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/teams`, { timeout: 15000 });
+      } catch (proxyErr) {
+        console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
+        teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 15000 });
+      }
     }
     let teamsData = teamsResponse.data;
     if (typeof teamsData === 'string') {
@@ -90,10 +96,15 @@ export async function syncMatchesHelper() {
     // 2. Fetch Games
     let gamesResponse;
     try {
-      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games');
+      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games', { timeout: 15000 });
     } catch (err) {
       console.warn('Direct fetch games failed, trying proxy...', err instanceof Error ? err.message : String(err));
-      gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 8000 });
+      try {
+        gamesResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/games`, { timeout: 15000 });
+      } catch (proxyErr) {
+        console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
+        gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 15000 });
+      }
     }
 
     let gamesData = gamesResponse.data;
@@ -129,9 +140,9 @@ export async function syncMatchesHelper() {
         const [datePart, timePart] = localDateStr.split(' ');
         const [month, day, year] = datePart.split('/');
         const [hour, minute] = timePart.split(':');
-        
+
         const offset = STADIUM_OFFSETS[stadiumId] ?? -5; // Mặc định là -5 (CDT) nếu không tìm thấy
-        
+
         const date = new Date(Date.UTC(
           parseInt(year, 10),
           parseInt(month, 10) - 1,
@@ -139,10 +150,10 @@ export async function syncMatchesHelper() {
           parseInt(hour, 10),
           parseInt(minute, 10)
         ));
-        
+
         // Điều chỉnh múi giờ về UTC thực tế: UTC = Local - Offset
         date.setUTCHours(date.getUTCHours() - offset);
-        
+
         return date.toISOString();
       } catch {
         return new Date().toISOString();
@@ -223,12 +234,12 @@ export async function syncMatchesHelper() {
       const { data: currentMatches } = await supabase
         .from('matches')
         .select('id');
-      
+
       if (currentMatches && currentMatches.length > 0) {
         const idsToDelete = (currentMatches as { id: number }[])
           .map((m) => m.id)
           .filter((id) => !apiIds.includes(id));
-        
+
         if (idsToDelete.length > 0) {
           console.log(`Deleting ${idsToDelete.length} outdated/mock matches from database...`);
           await supabase
@@ -243,7 +254,7 @@ export async function syncMatchesHelper() {
         .upsert(matchesToUpsert, { onConflict: 'id' });
       if (error) throw error;
       console.log(`Successfully synced ${matchesToUpsert.length} matches from worldcup26.ir`);
-      
+
       // Tự động tính điểm cho các dự đoán sau khi đồng bộ dữ liệu trận đấu
       await recalculateAllPendingPoints();
 
@@ -273,7 +284,7 @@ export async function syncMatchesHelper() {
       console.log('Fetching fallback matches from API-Football...');
       const isRapidApi = apiHost.toLowerCase().includes('rapidapi');
       const basePath = isRapidApi ? '/v3' : '';
-      
+
       const response = await axiosInstance.get(
         `https://${apiHost}${basePath}/fixtures?league=1&season=2026`,
         {
@@ -334,12 +345,12 @@ export async function syncMatchesHelper() {
         const { data: currentMatches } = await supabase
           .from('matches')
           .select('id');
-        
+
         if (currentMatches && currentMatches.length > 0) {
           const idsToDelete = (currentMatches as { id: number }[])
             .map((m) => m.id)
             .filter((id) => !apiIds.includes(id));
-          
+
           if (idsToDelete.length > 0) {
             console.log(`Deleting ${idsToDelete.length} outdated/mock matches from database...`);
             await supabase
@@ -355,7 +366,7 @@ export async function syncMatchesHelper() {
 
         if (error) throw error;
         console.log(`Successfully synced ${matchesToUpsert.length} matches from fallback API-Football`);
-        
+
         // Tự động tính điểm cho các dự đoán sau khi đồng bộ dữ liệu trận đấu
         await recalculateAllPendingPoints();
 

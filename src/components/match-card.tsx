@@ -166,7 +166,25 @@ export default function MatchCard({
   };
 
   // Calculate badge styling for points earned
-  const isDraw = match.status === 'FT' && match.home_score !== null && match.away_score !== null && match.home_score === match.away_score;
+  const handicapTeam = match.handicap_team || 'none';
+  const handicapVal = Number(match.handicap_value || 0);
+  let isDraw = false;
+
+  if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+    if (handicapTeam === 'none' || handicapVal === 0) {
+      isDraw = match.home_score === match.away_score;
+    } else {
+      let diff = 0;
+      if (handicapTeam === 'home') {
+        diff = (match.home_score - handicapVal) - match.away_score;
+      } else if (handicapTeam === 'away') {
+        diff = match.home_score - (match.away_score - handicapVal);
+      } else {
+        diff = match.home_score - match.away_score;
+      }
+      isDraw = diff === 0;
+    }
+  }
 
   const getPointsBadge = (points: number | null) => {
     if (points === null) return null;
@@ -182,13 +200,13 @@ export default function MatchCard({
     if (isDraw) {
       if (points > 0) {
         return (
-          <span className="text-xs font-semibold bg-sky-500/15 text-sky-400 border border-sky-500/25 px-2.5 py-1 rounded-full text-center">
+          <span className="text-xs font-semibold bg-sky-500/25 text-sky-400 border border-sky-500/35 px-2.5 py-1 rounded-full text-center">
             Trận hoà (+{new Intl.NumberFormat('en-US').format(points)}đ)
           </span>
         );
       }
       return (
-        <span className="text-xs font-semibold bg-sky-500/10 text-sky-400/80 border border-sky-500/15 px-2.5 py-1 rounded-full text-center">
+        <span className="text-xs font-semibold bg-sky-500/15 text-sky-400/90 border border-sky-500/20 px-2.5 py-1 rounded-full text-center">
           Trận hoà (0đ)
         </span>
       );
@@ -218,7 +236,7 @@ export default function MatchCard({
         cardStatusClass = 'bg-[#071f18]/95 border-emerald-500/40 hover:border-emerald-500/60 shadow-[0_0_25px_-5px_rgba(16,185,129,0.15)]';
       } else if (isDraw) {
         // Trận hoà: Nền xanh sky tối, viền sky nổi bật
-        cardStatusClass = 'bg-[#0b1520]/95 border-sky-500/35 hover:border-sky-500/55 shadow-[0_0_25px_-5px_rgba(56,189,248,0.12)]';
+        cardStatusClass = 'bg-[#082138]/95 border-sky-500/45 hover:border-sky-500/65 shadow-[0_0_25px_-5px_rgba(56,189,248,0.18)]';
       } else {
         // Đoán sai: Nền đỏ tối đậm đà, viền đỏ nổi bật
         cardStatusClass = 'bg-[#1f0d0d]/95 border-red-500/40 hover:border-red-500/60 shadow-[0_0_25px_-5px_rgba(239,68,68,0.15)]';
@@ -238,7 +256,7 @@ export default function MatchCard({
       if (userPrediction.points_earned === 1) {
         ringClass = 'ring-[#071f18]';
       } else if (isDraw) {
-        ringClass = 'ring-[#0b1520]';
+        ringClass = 'ring-[#082138]';
       } else {
         ringClass = 'ring-[#1f0d0d]';
       }

@@ -123,18 +123,36 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
       );
     }
 
-    const isMatchDraw = match.status === 'FT' && match.home_score !== null && match.away_score !== null && match.home_score === match.away_score;
+    const handicapTeam = match.handicap_team || 'none';
+    const handicapVal = Number(match.handicap_value || 0);
+    let isMatchDraw = false;
+
+    if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+      if (handicapTeam === 'none' || handicapVal === 0) {
+        isMatchDraw = match.home_score === match.away_score;
+      } else {
+        let diff = 0;
+        if (handicapTeam === 'home') {
+          diff = (match.home_score - handicapVal) - match.away_score;
+        } else if (handicapTeam === 'away') {
+          diff = match.home_score - (match.away_score - handicapVal);
+        } else {
+          diff = match.home_score - match.away_score;
+        }
+        isMatchDraw = diff === 0;
+      }
+    }
 
     if (isMatchDraw) {
       if (points > 0) {
         return (
-          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/10 border border-sky-500/20 px-2.5 py-0.5 rounded-full">
+          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/20 border border-sky-500/35 px-2.5 py-0.5 rounded-full">
             Hoà kèo (+{new Intl.NumberFormat('en-US').format(points)}đ)
           </span>
         );
       }
       return (
-        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/5 border border-sky-500/10 px-2.5 py-0.5 rounded-full">
+        <span className="inline-flex items-center gap-1 text-[11px] font-bold text-sky-400 bg-sky-500/15 border border-sky-500/25 px-2.5 py-0.5 rounded-full">
           Hoà kèo (0đ)
         </span>
       );
@@ -382,7 +400,25 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                     finishedPredictions.map(p => {
                       const match = p.matches;
                       
-                      const isMatchDraw = match.status === 'FT' && match.home_score !== null && match.away_score !== null && match.home_score === match.away_score;
+                      const handicapTeam = match.handicap_team || 'none';
+                      const handicapVal = Number(match.handicap_value || 0);
+                      let isMatchDraw = false;
+
+                      if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+                        if (handicapTeam === 'none' || handicapVal === 0) {
+                          isMatchDraw = match.home_score === match.away_score;
+                        } else {
+                          let diff = 0;
+                          if (handicapTeam === 'home') {
+                            diff = (match.home_score - handicapVal) - match.away_score;
+                          } else if (handicapTeam === 'away') {
+                            diff = match.home_score - (match.away_score - handicapVal);
+                          } else {
+                            diff = match.home_score - match.away_score;
+                          }
+                          isMatchDraw = diff === 0;
+                        }
+                      }
 
                       // Tính toán background động dựa theo kết quả thắng/hòa/thua kèo (đậm hơn để tăng tương phản)
                       let cardBgClass = "bg-white/[0.02] border-white/5 hover:border-white/10";
@@ -390,7 +426,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                         cardBgClass = "bg-emerald-500/[0.08] border-emerald-500/30 hover:bg-emerald-500/[0.12]";
                       } else if (isMatchDraw) {
                         // Trận hoà -> sky
-                        cardBgClass = "bg-sky-500/[0.08] border-sky-500/30 hover:bg-sky-500/[0.12]";
+                        cardBgClass = "bg-sky-500/[0.14] border-sky-500/40 hover:bg-sky-500/[0.20]";
                       } else if (p.points_earned !== null && p.points_earned > 0) {
                         // Thua nhưng có điểm thua -> amber
                         cardBgClass = "bg-amber-500/[0.08] border-amber-500/30 hover:bg-amber-500/[0.12]";

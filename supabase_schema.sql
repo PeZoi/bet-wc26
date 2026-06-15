@@ -224,9 +224,9 @@ BEGIN
         UPDATE public.profiles p
         SET 
             correct_predictions_count = COALESCE((SELECT COUNT(*) FROM public.predictions WHERE user_id = p.id AND is_correct = TRUE), 0),
+            exact_scores_count = COALESCE((SELECT COUNT(*) FROM public.predictions WHERE user_id = p.id AND is_correct = TRUE), 0),
             total_loss_points = COALESCE((SELECT SUM(points_earned) FROM public.predictions WHERE user_id = p.id AND is_correct = FALSE), 0),
-            points = COALESCE((SELECT COUNT(*) FROM public.predictions WHERE user_id = p.id AND is_correct = TRUE), 0) + 
-                     COALESCE((SELECT SUM(points_earned) FROM public.predictions WHERE user_id = p.id AND is_correct = FALSE), 0),
+            points = COALESCE((SELECT COUNT(*) FROM public.predictions WHERE user_id = p.id AND is_correct = TRUE), 0), -- Chỉ lấy số trận đoán đúng
             updated_at = now()
         WHERE p.id IN (SELECT DISTINCT user_id FROM public.predictions WHERE match_id = NEW.id);
 

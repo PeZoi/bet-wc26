@@ -161,7 +161,11 @@ export default function Navbar() {
 							<div className='h-8 w-24 animate-pulse rounded-full bg-white/5' />
 						) : user ? (
 							<div className='flex items-center gap-2'>
-								<div className='flex items-center gap-2 rounded-full bg-card border border-white/5 py-1 pl-1 pr-2.5'>
+								<Link
+									href={`/users/${user.id}`}
+									prefetch={true}
+									className='flex items-center gap-2 rounded-full bg-card border border-white/5 py-1 pl-1 pr-2.5 hover:bg-white/5 hover:border-white/10 active:scale-95 transition-all cursor-pointer'
+								>
 									<img
 										src={
 											user.user_metadata?.avatar_url ||
@@ -176,7 +180,7 @@ export default function Navbar() {
 									<span className='text-[11px] font-bold max-w-[80px] truncate text-foreground'>
 										{user.user_metadata?.full_name || "User"}
 									</span>
-								</div>
+								</Link>
 								<button
 									onClick={handleLogout}
 									className='rounded-full bg-white/5 p-2 text-muted-foreground hover:text-white hover:bg-white/10 transition-colors cursor-pointer'
@@ -253,7 +257,12 @@ export default function Navbar() {
 							<div className='h-10 w-full animate-pulse rounded-lg bg-white/5' />
 						) : user ? (
 							<div className='space-y-3 px-4'>
-								<div className='flex items-center gap-3'>
+								<Link
+									href={`/users/${user.id}`}
+									prefetch={true}
+									onClick={() => setMobileMenuOpen(false)}
+									className='flex items-center gap-3 hover:bg-white/5 p-1.5 rounded-xl transition-colors cursor-pointer w-full'
+								>
 									<img
 										src={
 											user.user_metadata?.avatar_url ||
@@ -273,7 +282,7 @@ export default function Navbar() {
 											{user.email}
 										</div>
 									</div>
-								</div>
+								</Link>
 								<button
 									onClick={handleLogout}
 									className='flex w-full items-center justify-center gap-2 rounded-lg bg-white/5 py-2.5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-white/10'
