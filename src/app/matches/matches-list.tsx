@@ -135,6 +135,11 @@ export default function MatchesList({
     return stageMatch && statusMatch && searchMatch && opponentsDetermined;
   });
 
+  // Sắp xếp trận đấu đã diễn ra theo thứ tự thời gian giảm dần (mới nhất lên đầu)
+  if (statusFilter === 'finished') {
+    filteredMatches.sort((a, b) => new Date(b.match_time).getTime() - new Date(a.match_time).getTime());
+  }
+
   // Tính toán số trận đã diễn ra và tổng số trận dựa trên bộ lọc Vòng đấu (selectedStage) và Tìm kiếm (searchTerm)
   const matchesForStats = initialMatches.filter(match => {
     let stageMatch = false;
