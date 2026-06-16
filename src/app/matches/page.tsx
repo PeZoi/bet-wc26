@@ -67,25 +67,13 @@ export default async function MatchesPage() {
 			<Navbar />
 
 			<main className='flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-				<div className='space-y-6'>
-					<div>
-						<h1 className='text-2xl font-bold tracking-tight text-white sm:text-3xl'>
-							Lịch Thi Đấu & Kết Quả
-						</h1>
-						<p className='text-sm text-muted-foreground mt-1'>
-							Theo dõi lịch thi đấu, kết quả cập nhật trực tiếp và dự
-							đoán tỉ số để tích điểm.
-						</p>
-					</div>
-
-					<MatchesList
-						initialMatches={matches}
-						initialPredictions={predictions}
-						allPredictions={allPredictions}
-						isLoggedIn={isLoggedIn}
-						isAdmin={isAdmin}
-					/>
-				</div>
+				<MatchesList
+					initialMatches={matches}
+					initialPredictions={predictions}
+					allPredictions={allPredictions}
+					isLoggedIn={isLoggedIn}
+					isAdmin={isAdmin}
+				/>
 			</main>
 
 			<footer className='border-t border-white/5 py-6 text-center text-xs text-muted-foreground mt-8'>

@@ -19,6 +19,8 @@ interface MatchCardProps {
   onPredictClick?: (match: Match) => void;
   isLoggedIn: boolean;
   isAdmin?: boolean;
+  stagePlayedCount?: number;
+  stageTotalCount?: number;
 }
 
 // Portal component to render modals directly under document.body
@@ -37,7 +39,9 @@ export default function MatchCard({
   matchPredictions = [],
   onPredictClick,
   isLoggedIn,
-  isAdmin = false
+  isAdmin = false,
+  stagePlayedCount,
+  stageTotalCount
 }: MatchCardProps) {
   const router = useRouter();
   const { showAlert } = useDialog();
@@ -301,10 +305,15 @@ export default function MatchCard({
       <div className="flex flex-col gap-2 border-b border-white/5 pb-3.5 mb-4">
         {/* Top Row: Stage & Status */}
         <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5">
             <span className="text-xs font-bold tracking-wider text-muted-foreground uppercase whitespace-nowrap">
               {match.stage}
             </span>
+            {stagePlayedCount !== undefined && stageTotalCount !== undefined && (
+              <span className="text-[8px] text-muted-foreground/60 font-bold uppercase bg-white/5 border border-white/5 px-1.5 py-0.5 rounded select-none">
+                {stagePlayedCount}/{stageTotalCount} trận
+              </span>
+            )}
             {isAdmin && (
               <button
                 onClick={handleOpenAdminModal}

@@ -48,8 +48,16 @@ function Portal({ children }: { children: React.ReactNode }) {
   return mounted ? createPortal(children, document.body) : null;
 }
 
-export default function GroupStandingsClient({ 
-  initialGroups, 
+// Hàm helper để định dạng điểm số với dấu phẩy phân cách hàng ngàn
+const formatPointsDisplay = (pts: number, showPlus = false) => {
+  if (pts === 0) return '0đ';
+  const prefix = showPlus && pts > 0 ? '+' : '';
+  const formatted = new Intl.NumberFormat('en-US').format(pts);
+  return `${prefix}${formatted}đ`;
+};
+
+export default function GroupStandingsClient({
+  initialGroups,
   allMatches,
   predictions,
   isLoggedIn,
@@ -144,6 +152,7 @@ export default function GroupStandingsClient({
       {initialGroups.map((group) => {
         const isExpanded = !!expandedGroups[group.groupLetter];
         const groupMatches = getGroupMatches(group.groupLetter);
+        const playedMatchesCount = groupMatches.filter((m) => m.status === 'FT').length;
 
         return (
           <div
@@ -160,7 +169,7 @@ export default function GroupStandingsClient({
                   BẢNG {group.groupLetter}
                 </span>
                 <span className="text-[9px] text-muted-foreground/60 font-bold uppercase bg-white/5 border border-white/5 px-1.5 py-0.5 rounded">
-                  {groupMatches.length} trận
+                  {playedMatchesCount}/{groupMatches.length} trận
                 </span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -191,7 +200,7 @@ export default function GroupStandingsClient({
                 <tbody>
                   {group.teams.map((team, idx) => {
                     const rank = idx + 1;
-                    
+
                     // Determine rank color class
                     let rankCircleClass = 'bg-white/5 text-muted-foreground';
                     let rowBorderClass = 'border-l-2 border-transparent';
@@ -238,8 +247,8 @@ export default function GroupStandingsClient({
                                 <Globe className="w-3.5 h-3.5 text-muted-foreground/50" />
                               )}
                             </div>
-                            <TeamName 
-                              name={team.teamName} 
+                            <TeamName
+                              name={team.teamName}
                               className={`text-xs max-w-[90px] sm:max-w-[120px] ${textClass}`}
                             />
                           </div>
@@ -256,9 +265,8 @@ export default function GroupStandingsClient({
                         </td>
 
                         {/* GD */}
-                        <td className={`py-3 px-2 text-center font-semibold font-mono ${
-                          team.gd > 0 ? 'text-emerald-500' : team.gd < 0 ? 'text-rose-500/70' : 'text-muted-foreground/60'
-                        }`}>
+                        <td className={`py-3 px-2 text-center font-semibold font-mono ${team.gd > 0 ? 'text-emerald-500' : team.gd < 0 ? 'text-rose-500/70' : 'text-muted-foreground/60'
+                          }`}>
                           {team.gd > 0 ? `+${team.gd}` : team.gd}
                         </td>
 
@@ -300,7 +308,7 @@ export default function GroupStandingsClient({
                   <Calendar className="h-3 w-3 text-primary" />
                   <span>Trận đấu và kết quả</span>
                 </div>
-                
+
                 {groupMatches.length === 0 ? (
                   <div className="text-center text-muted-foreground text-[10px] py-4 italic">
                     Chưa có lịch đấu bảng này.
@@ -334,29 +342,18 @@ export default function GroupStandingsClient({
                               handlePredictClick(match);
                             }
                           }}
-                          className={`flex flex-col gap-2.5 bg-[#0b101c]/45 border border-white/[0.04] hover:border-white/[0.08] rounded-2xl p-3 text-[11px] transition-all duration-200 ${
-                            isLoggedIn && !isLocked ? 'cursor-pointer hover:bg-white/[0.02] hover:border-primary/20' : ''
-                          }`}
+                          className={`flex flex-col gap-2 bg-[#0b101c]/45 border border-white/[0.04] hover:border-white/[0.08] rounded-2xl p-3 text-[11px] transition-all duration-200 ${isLoggedIn && !isLocked ? 'cursor-pointer hover:bg-white/[0.02] hover:border-primary/20' : ''
+                            }`}
                         >
-                          {/* Row 1: Time & Actions/Badges */}
+                          {/* Row 1: Thời gian thi đấu & Badges cấu hình điểm */}
                           <div className="flex items-center justify-between text-[10px] text-muted-foreground/80 border-b border-white/[0.02] pb-2 select-none">
-                            <span className="font-semibold flex items-center gap-1.5">
+                            <span className="font-semibold flex items-center gap-1">
                               <Calendar className="h-3.5 w-3.5 text-muted-foreground/50" />
                               {formattedDate} - {formattedTime}
-                              {Number(match.loss_points || 0) > 0 && (
-                                <span className="text-[8px] font-bold text-amber-400 bg-amber-500/5 border border-amber-500/20 px-1.5 py-0.5 rounded-md select-none ml-1.5">
-                                  Sai: +{new Intl.NumberFormat('en-US').format(match.loss_points ?? 0)}đ
-                                </span>
-                              )}
-                              {Number(match.draw_points || 0) > 0 && (
-                                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/5 border border-sky-500/20 px-1.5 py-0.5 rounded-md select-none ml-1.5">
-                                  Hoà: +{new Intl.NumberFormat('en-US').format(match.draw_points ?? 0)}đ
-                                </span>
-                              )}
                             </span>
-                            
+
                             <div className="flex items-center gap-1.5">
-                              {/* Live Badge */}
+                              {/* Trạng thái LIVE */}
                               {isLive && (
                                 <span className="flex-shrink-0 flex items-center gap-1 text-[8px] font-extrabold text-red-400 bg-red-500/10 border border-red-500/20 px-1.5 py-0.5 rounded animate-pulse">
                                   <span className="h-1 w-1 rounded-full bg-red-500" />
@@ -364,79 +361,25 @@ export default function GroupStandingsClient({
                                 </span>
                               )}
 
-                              {/* User Prediction Badge */}
-                              {userPrediction ? (
-                                <div className="flex items-center gap-1.5 select-none animate-fade-in">
-                                  <span className="flex items-center gap-1.5 bg-[#10b981]/10 border border-[#10b981]/25 text-[#10b981] px-2.5 py-0.5 rounded-full text-[9px] font-bold">
-                                    <img 
-                                      src={userPrediction.prediction_choice === 'home' ? match.home_logo : match.away_logo} 
-                                      className="h-3.5 w-5 object-cover rounded shadow-sm bg-white/5 border border-white/5" 
-                                      alt="" 
-                                    />
-                                    <span>Bạn: </span>
-                                    <TeamName 
-                                      name={userPrediction.prediction_choice === 'home' ? match.home_team : match.away_team} 
-                                      className="text-[#10b981] font-extrabold"
-                                    />
-                                  </span>
-
-                                  {/* Points Badge if Finished */}
-                                  {match.status === 'FT' && (
-                                    <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold ${
-                                      (userPrediction.points_earned ?? 0) > 0 
-                                        ? 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400' 
-                                        : 'bg-white/5 border border-white/10 text-muted-foreground/60'
-                                    }`}>
-                                      {(userPrediction.points_earned ?? 0) > 0 ? `+${userPrediction.points_earned}đ` : '0đ'}
-                                    </span>
-                                  )}
-
-                                  {!isLocked && isLoggedIn && (
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handlePredictClick(match);
-                                      }}
-                                      className="p-1 text-[#10b981] hover:bg-[#10b981]/15 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-[#10b981]/20"
-                                      title="Sửa dự đoán"
-                                    >
-                                      <Edit3 className="h-3 w-3" />
-                                    </button>
-                                  )}
-                                </div>
-                              ) : (
-                                isLoggedIn && !isLocked && (
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handlePredictClick(match);
-                                    }}
-                                    className="text-[9px] font-extrabold text-[#10b981] border border-[#10b981]/25 hover:border-[#10b981]/40 bg-[#10b981]/5 hover:bg-[#10b981]/15 px-2.5 py-1 rounded-full transition-all cursor-pointer select-none"
-                                  >
-                                    Cược ngay
-                                  </button>
-                                )
+                              {/* Badge cấu hình điểm khi đoán Sai */}
+                              {Number(match.loss_points || 0) > 0 && (
+                                <span className="text-[8px] font-bold text-amber-400 bg-amber-500/5 border border-amber-500/20 px-1.5 py-0.5 rounded-md select-none">
+                                  Sai: {formatPointsDisplay(match.loss_points ?? 0, true)}
+                                </span>
                               )}
 
-                              {/* Admin Handicap Edit */}
-                              {isAdmin && match.status !== 'FT' && (
-                                <button
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    handleOpenAdminModal(match);
-                                  }}
-                                  className="p-1 text-rose-400 hover:bg-rose-500/10 border border-white/5 rounded-lg transition-colors cursor-pointer"
-                                  title="Sửa kèo chấp (Admin)"
-                                >
-                                  <Edit3 className="h-3 w-3" />
-                                </button>
+                              {/* Badge cấu hình điểm khi Hoà */}
+                              {Number(match.draw_points || 0) > 0 && (
+                                <span className="text-[8px] font-bold text-sky-400 bg-sky-500/5 border border-sky-500/20 px-1.5 py-0.5 rounded-md select-none">
+                                  Hoà: {formatPointsDisplay(match.draw_points ?? 0, true)}
+                                </span>
                               )}
                             </div>
                           </div>
 
-                          {/* Row 2: Main Match Info (Home vs Away) */}
-                          <div className="flex items-center gap-2 w-full justify-center px-1">
-                            {/* Home Team */}
+                          {/* Row 2: Nội dung chính trận đấu (Hai đội & Tỷ số) */}
+                          <div className="flex items-center gap-2 w-full justify-center px-1 py-1">
+                            {/* Đội nhà */}
                             <div className="flex items-center gap-2 flex-1 justify-end min-w-0">
                               <div className="flex flex-col items-end min-w-0">
                                 <TeamName
@@ -456,12 +399,11 @@ export default function GroupStandingsClient({
                               />
                             </div>
 
-                            {/* Score or VS */}
+                            {/* Tỷ số hoặc VS */}
                             <div className="flex items-center justify-center flex-shrink-0 min-w-[45px] select-none">
                               {isFinished || isLive ? (
-                                <span className={`font-mono font-extrabold px-1.5 py-0.5 rounded text-[11px] ${
-                                  isLive ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-white/5 border border-white/5 text-white'
-                                }`}>
+                                <span className={`font-mono font-extrabold px-1.5 py-0.5 rounded text-[11px] ${isLive ? 'bg-red-500/15 text-red-400 border border-red-500/20' : 'bg-white/5 border border-white/5 text-white'
+                                  }`}>
                                   {match.home_score ?? 0} - {match.away_score ?? 0}
                                 </span>
                               ) : (
@@ -471,7 +413,7 @@ export default function GroupStandingsClient({
                               )}
                             </div>
 
-                            {/* Away Team */}
+                            {/* Đội khách */}
                             <div className="flex items-center gap-2 flex-1 justify-start min-w-0">
                               <img
                                 src={match.away_logo}
@@ -491,6 +433,94 @@ export default function GroupStandingsClient({
                               </div>
                             </div>
                           </div>
+
+                          {/* Row 3 (Footer): Thông tin đặt cược & điểm số của người dùng */}
+                          {(userPrediction || (isLoggedIn && !isLocked) || (isAdmin && match.status !== 'FT')) && (
+                            <div className="flex items-center justify-between border-t border-white/[0.03] pt-2 mt-0.5 select-none">
+                              {/* Phần thông tin cược & điểm thưởng */}
+                              <div className="flex items-center gap-1.5 min-w-0">
+                                {userPrediction ? (
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span className="flex items-center gap-1 bg-[#10b981]/10 border border-[#10b981]/25 text-[#10b981] px-2 py-0.5 rounded-full text-[9px] font-bold">
+                                      <img
+                                        src={userPrediction.prediction_choice === 'home' ? match.home_logo : match.away_logo}
+                                        className="h-3.5 w-5 object-cover rounded shadow-sm bg-white/5 border border-white/5"
+                                        alt=""
+                                      />
+                                      <span className="text-muted-foreground/60 font-medium text-[8px]">Bạn cược:</span>
+                                      <TeamName
+                                        name={userPrediction.prediction_choice === 'home' ? match.home_team : match.away_team}
+                                        className="text-[#10b981] font-extrabold truncate max-w-[80px]"
+                                      />
+                                    </span>
+
+                                    {/* Điểm nhận được với logic màu sắc yêu cầu */}
+                                    {match.status === 'FT' && (() => {
+                                      const earned = userPrediction.points_earned ?? 0;
+                                      const isLossBonus = earned === match.loss_points && Number(match.loss_points) > 0;
+                                      const isDrawBonus = earned === match.draw_points && Number(match.draw_points) > 0;
+                                      const isPlusOne = earned === 1;
+
+                                      let badgeStyle = 'bg-white/5 border border-white/10 text-muted-foreground/60';
+                                      if (isPlusOne) {
+                                        // Thắng +1đ giữ nguyên màu xanh
+                                        badgeStyle = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+                                      } else if (isLossBonus) {
+                                        // Điểm nhận được bằng điểm Sai -> đổi sang màu cam
+                                        badgeStyle = 'bg-amber-500/10 border border-amber-500/20 text-amber-400';
+                                      } else if (isDrawBonus) {
+                                        // Điểm nhận được bằng điểm Hoà -> đổi sang màu xanh dương
+                                        badgeStyle = 'bg-sky-500/10 border border-sky-500/20 text-sky-400';
+                                      } else if (earned > 0) {
+                                        badgeStyle = 'bg-emerald-500/10 border border-emerald-500/20 text-emerald-400';
+                                      }
+
+                                      return (
+                                        <span className={`inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-full text-[8px] font-extrabold ${badgeStyle}`}>
+                                          {formatPointsDisplay(earned, true)}
+                                        </span>
+                                      );
+                                    })()}
+                                  </div>
+                                ) : (
+                                  <span className="text-[9px] text-muted-foreground/40 italic">Chưa đặt cược</span>
+                                )}
+                              </div>
+
+                              {/* Các nút hành động */}
+                              <div className="flex items-center gap-1.5">
+                                {isLoggedIn && !isLocked && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handlePredictClick(match);
+                                    }}
+                                    className={userPrediction
+                                      ? "p-1 text-[#10b981] hover:bg-[#10b981]/15 rounded-lg transition-colors cursor-pointer border border-transparent hover:border-[#10b981]/20"
+                                      : "text-[9px] font-extrabold text-[#10b981] border border-[#10b981]/25 hover:border-[#10b981]/40 bg-[#10b981]/5 hover:bg-[#10b981]/15 px-2.5 py-0.5 rounded-full transition-all cursor-pointer select-none"
+                                    }
+                                    title={userPrediction ? "Sửa cược" : "Cược ngay"}
+                                  >
+                                    {userPrediction ? <Edit3 className="h-3 w-3" /> : "Cược ngay"}
+                                  </button>
+                                )}
+
+                                {/* Admin sửa kèo */}
+                                {isAdmin && match.status !== 'FT' && (
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleOpenAdminModal(match);
+                                    }}
+                                    className="p-1 text-rose-400 hover:bg-rose-500/10 border border-white/5 rounded-lg transition-colors cursor-pointer"
+                                    title="Sửa kèo chấp (Admin)"
+                                  >
+                                    <Edit3 className="h-3 w-3" />
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -551,14 +581,14 @@ export default function GroupStandingsClient({
                   {/* Match Info Box */}
                   <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
                     <div className="flex flex-col items-center flex-1 min-w-0">
-                      <img 
-                        src={selectedAdminMatch.home_logo} 
-                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                        alt={selectedAdminMatch.home_team} 
+                      <img
+                        src={selectedAdminMatch.home_logo}
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5"
+                        alt={selectedAdminMatch.home_team}
                       />
-                      <TeamName 
-                        name={selectedAdminMatch.home_team} 
-                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      <TeamName
+                        name={selectedAdminMatch.home_team}
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center"
                       />
                     </div>
 
@@ -567,14 +597,14 @@ export default function GroupStandingsClient({
                     </div>
 
                     <div className="flex flex-col items-center flex-1 min-w-0">
-                      <img 
-                        src={selectedAdminMatch.away_logo} 
-                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                        alt={selectedAdminMatch.away_team} 
+                      <img
+                        src={selectedAdminMatch.away_logo}
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5"
+                        alt={selectedAdminMatch.away_team}
                       />
-                      <TeamName 
-                        name={selectedAdminMatch.away_team} 
-                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      <TeamName
+                        name={selectedAdminMatch.away_team}
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center"
                       />
                     </div>
                   </div>
@@ -596,11 +626,10 @@ export default function GroupStandingsClient({
                             key={option.id}
                             type="button"
                             onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
-                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
-                              isSelected
+                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${isSelected
                                 ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
                                 : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
-                            }`}
+                              }`}
                           >
                             {option.label}
                           </button>
@@ -633,11 +662,10 @@ export default function GroupStandingsClient({
                                 key={val}
                                 type="button"
                                 onClick={() => setTempHandicapValue(val)}
-                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                  isValSelected
+                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                     ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
                                     : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 {val}
                               </button>
@@ -677,11 +705,10 @@ export default function GroupStandingsClient({
                               key={val}
                               type="button"
                               onClick={() => setTempLossPoints(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                   ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
                                   : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
+                                }`}
                             >
                               {val}đ
                             </button>
@@ -720,11 +747,10 @@ export default function GroupStandingsClient({
                               key={val}
                               type="button"
                               onClick={() => setTempDrawPoints(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                   ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
                                   : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
+                                }`}
                             >
                               {val}đ
                             </button>

@@ -82,12 +82,29 @@ export default function MatchesList({
   const predictionMap = new Map<number, Prediction>();
   predictions.forEach(p => predictionMap.set(p.match_id, p));
 
+  // Tính số trận đã đá / tổng số trận cho mỗi stage (vòng đấu/bảng đấu)
+  const stageStats = new Map<string, { played: number; total: number }>();
+  initialMatches.forEach(m => {
+    const stage = m.stage;
+    const current = stageStats.get(stage) || { played: 0, total: 0 };
+    stageStats.set(stage, {
+      played: current.played + (m.status === 'FT' ? 1 : 0),
+      total: current.total + 1
+    });
+  });
+
   // Filter matches
   const filteredMatches = initialMatches.filter(match => {
     // Stage Filter
-    const stageMatch =
-      selectedStage === 'all' ||
-      match.stage.toLowerCase().includes(selectedStage.toLowerCase());
+    let stageMatch = false;
+    if (selectedStage === 'all') {
+      stageMatch = true;
+    } else if (selectedStage === 'Vòng bảng') {
+      const stageLower = match.stage.toLowerCase();
+      stageMatch = stageLower.includes('bảng') || stageLower.includes('group');
+    } else {
+      stageMatch = match.stage.toLowerCase().includes(selectedStage.toLowerCase());
+    }
 
     // Status Filter
     let statusMatch = true;
@@ -118,6 +135,31 @@ export default function MatchesList({
     return stageMatch && statusMatch && searchMatch && opponentsDetermined;
   });
 
+  // Tính toán số trận đã diễn ra và tổng số trận dựa trên bộ lọc Vòng đấu (selectedStage) và Tìm kiếm (searchTerm)
+  const matchesForStats = initialMatches.filter(match => {
+    let stageMatch = false;
+    if (selectedStage === 'all') {
+      stageMatch = true;
+    } else if (selectedStage === 'Vòng bảng') {
+      const stageLower = match.stage.toLowerCase();
+      stageMatch = stageLower.includes('bảng') || stageLower.includes('group');
+    } else {
+      stageMatch = match.stage.toLowerCase().includes(selectedStage.toLowerCase());
+    }
+
+    const searchMatch =
+      match.home_team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      match.away_team.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      translateTeamName(match.home_team).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      translateTeamName(match.away_team).toLowerCase().includes(searchTerm.toLowerCase()) ||
+      match.stage.toLowerCase().includes(searchTerm.toLowerCase());
+
+    return stageMatch && searchMatch;
+  });
+
+  const totalMatchesCount = matchesForStats.length;
+  const playedMatchesCount = matchesForStats.filter(m => m.status === 'FT').length;
+
   // Prepare tournament bracket data
   const vong16 = initialMatches
     .filter((m) => m.stage === 'Vòng 1/16')
@@ -142,6 +184,26 @@ export default function MatchesList({
 
   return (
     <div className="space-y-6">
+      {/* Tiêu đề trang hiển thị động theo bộ lọc */}
+      <div>
+        <h1 className='text-2xl font-bold tracking-tight text-white sm:text-3xl flex items-center gap-3 flex-wrap'>
+          <span>Lịch Thi Đấu & Kết Quả</span>
+          {totalMatchesCount > 0 && (
+            <span className="inline-flex items-center gap-2 bg-emerald-950/40 border border-emerald-500/25 text-emerald-400/90 px-2.5 py-1 rounded-full select-none shadow-[0_0_12px_-3px_rgba(16,185,129,0.15)]">
+              <span className="font-mono font-extrabold text-white bg-emerald-500/25 px-1.5 py-0.5 rounded text-[10px] tracking-wider">
+                {playedMatchesCount}/{totalMatchesCount}
+              </span>
+              <span className="text-[9px] font-bold tracking-widest text-emerald-400 uppercase pr-1 font-sans">
+                Trận đã đấu
+              </span>
+            </span>
+          )}
+        </h1>
+        <p className='text-sm text-muted-foreground mt-1'>
+          Theo dõi lịch thi đấu, kết quả cập nhật trực tiếp và dự đoán tỉ số để tích điểm.
+        </p>
+      </div>
+
       {/* Search & Filter Controls */}
       <div className="bg-card/30 border border-white/5 p-4 rounded-2xl backdrop-blur-sm space-y-4">
         {/* Row 1: Search & Toggle & Sync */}
@@ -266,18 +328,23 @@ export default function MatchesList({
           </div>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredMatches.map((match) => (
-              <div key={match.id} className="h-full">
-                <MatchCard
-                  match={match}
-                  userPrediction={predictionMap.get(match.id)}
-                  matchPredictions={allPredictions.filter(p => p.match_id === match.id)}
-                  onPredictClick={handlePredictClick}
-                  isLoggedIn={isLoggedIn}
-                  isAdmin={isAdmin}
-                />
-              </div>
-            ))}
+            {filteredMatches.map((match) => {
+              const stats = stageStats.get(match.stage);
+              return (
+                <div key={match.id} className="h-full">
+                  <MatchCard
+                    match={match}
+                    userPrediction={predictionMap.get(match.id)}
+                    matchPredictions={allPredictions.filter(p => p.match_id === match.id)}
+                    onPredictClick={handlePredictClick}
+                    isLoggedIn={isLoggedIn}
+                    isAdmin={isAdmin}
+                    stagePlayedCount={stats?.played}
+                    stageTotalCount={stats?.total}
+                  />
+                </div>
+              );
+            })}
           </div>
         )
       ) : (

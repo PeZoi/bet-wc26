@@ -130,9 +130,14 @@ export default function DashboardClient({
     .filter(m => m.status === 'NS' && isDetermined(m) && !predictionMap.has(m.id))
     .slice(0, 3);
 
-  // Get user's recent predictions
-  const userRecentPredictions = matches
-    .filter(m => predictionMap.has(m.id))
+  // Sắp xếp các dự đoán của user theo thời gian cược giảm dần (created_at giảm dần) để lấy dự đoán mới nhất
+  const sortedPredictions = [...predictions].sort((a, b) => {
+    return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+  });
+
+  const userRecentPredictions = sortedPredictions
+    .map(p => matches.find(m => m.id === p.match_id))
+    .filter((m): m is Match => !!m)
     .slice(0, 3);
 
   if (!isLoggedIn) {
@@ -202,31 +207,42 @@ export default function DashboardClient({
             </span>
           </div>
 
-          <div className="grid grid-cols-3 gap-3 relative z-10">
-            <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors">
+          <div className="flex flex-wrap gap-2.5 relative z-10 w-full">
+            {/* Điểm thua */}
+            <div className="flex-1 min-w-[130px] flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors">
               <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                <Star className="h-3 w-3 text-amber-400" />
-                Điểm thua
+                <Star className="h-3 w-3 text-amber-400 flex-shrink-0" />
+                <span>Điểm thua</span>
               </span>
-              <span className="text-xl sm:text-2xl font-black font-mono text-amber-400 mt-1">
-                {new Intl.NumberFormat('en-US').format(userProfile?.total_loss_points ?? 0)}đ
-              </span>
+              {(() => {
+                const valStr = new Intl.NumberFormat('en-US').format(userProfile?.total_loss_points ?? 0) + 'đ';
+                const sizeClass = valStr.length > 10 ? 'text-sm sm:text-base' : valStr.length > 7 ? 'text-base sm:text-lg' : 'text-lg sm:text-2xl';
+                return (
+                  <span className={`font-black font-mono text-amber-400 mt-1 break-all ${sizeClass}`} title={valStr}>
+                    {valStr}
+                  </span>
+                );
+              })()}
             </div>
-            <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors">
+
+            {/* Đúng */}
+            <div className="w-[75px] sm:w-[90px] flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors flex-shrink-0">
               <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                <Trophy className="h-3 w-3 text-emerald-400" />
-                Đúng
+                <Trophy className="h-3 w-3 text-emerald-400 flex-shrink-0" />
+                <span>Đúng</span>
               </span>
-              <span className="text-xl sm:text-2xl font-black font-mono text-emerald-400 mt-1">
+              <span className="text-lg sm:text-2xl font-black font-mono text-emerald-400 mt-1">
                 {userProfile?.exact_scores_count || 0}
               </span>
             </div>
-            <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors">
+
+            {/* Cược */}
+            <div className="w-[75px] sm:w-[90px] flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-3 hover:bg-white/[0.04] transition-colors flex-shrink-0">
               <span className="text-[10px] text-muted-foreground font-semibold flex items-center gap-1">
-                <Target className="h-3 w-3 text-cyan-400" />
-                Cược
+                <Target className="h-3 w-3 text-cyan-400 flex-shrink-0" />
+                <span>Cược</span>
               </span>
-              <span className="text-xl sm:text-2xl font-black font-mono text-cyan-400 mt-1">
+              <span className="text-lg sm:text-2xl font-black font-mono text-cyan-400 mt-1">
                 {predictions.length}
               </span>
             </div>
