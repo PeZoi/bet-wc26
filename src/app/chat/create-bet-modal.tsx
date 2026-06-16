@@ -31,6 +31,7 @@ export default function CreateBetModal({
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
+    let timer: NodeJS.Timeout;
     if (isOpen) {
       const loadMatches = async () => {
         setIsLoadingMatches(true);
@@ -48,11 +49,17 @@ export default function CreateBetModal({
       loadMatches();
     } else {
       // Reset form khi đóng modal
-      setTitle('');
-      setDescription('');
-      setSelectedMatchId(null);
-      setPrediction('HOME_WIN');
+      timer = setTimeout(() => {
+        setTitle('');
+        setDescription('');
+        setSelectedMatchId(null);
+        setPrediction('HOME_WIN');
+      }, 0);
     }
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
   }, [isOpen]);
 
   const handleSubmit = async (e: React.FormEvent) => {

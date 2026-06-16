@@ -5,7 +5,7 @@ import { Match, Prediction, Profile } from '@/types';
 import PredictionModal from '@/components/prediction-modal';
 import { translateTeamName } from '@/lib/translator';
 import TeamName from '@/components/team-name';
-import { Clock, ArrowRight, LayoutDashboard, Compass, Lock, CheckCircle2, Trophy, Award, Star, Target, TrendingUp } from 'lucide-react';
+import { Clock, ArrowRight, Compass, Lock, CheckCircle2, Trophy, Award, Star, Target, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 

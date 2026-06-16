@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Trophy, Check, X, AlertTriangle, Play, HelpCircle } from 'lucide-react';
+import { Trophy, Check, X, Play } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { respondToCustomBet, resolveCustomBet } from '@/app/actions/chat';
 import { useDialog } from '@/components/ui/dialog-custom';
@@ -55,7 +55,7 @@ export default function ChallengeCard({ betId, currentUserId }: ChallengeCardPro
           table: 'custom_bets',
           filter: `id=eq.${betId}`
         },
-        async (payload) => {
+        async () => {
           // Fetch lại thông tin đầy đủ kèm theo profile
           const { data } = await supabase
             .from('custom_bets')
@@ -78,7 +78,7 @@ export default function ChallengeCard({ betId, currentUserId }: ChallengeCardPro
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [betId]);
+  }, [betId, supabase]);
 
   if (isLoading) {
     return (

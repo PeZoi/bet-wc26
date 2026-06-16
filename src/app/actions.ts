@@ -72,6 +72,64 @@ export async function submitPrediction(
 }
 
 /**
+ * Cancel a user's prediction for a match.
+ */
+export async function cancelPrediction(matchId: number) {
+  try {
+    const supabase = await createClient();
+
+    // Check session
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) {
+      return { success: false, message: 'Bạn cần đăng nhập để hủy dự đoán.' };
+    }
+
+    // Fetch match details to verify time lock
+    const { data: match, error: matchError } = await supabase
+      .from('matches')
+      .select('match_time, status')
+      .eq('id', matchId)
+      .single();
+
+    if (matchError || !match) {
+      return { success: false, message: 'Không tìm thấy trận đấu.' };
+    }
+
+    // Lock predictions 5 minutes before match start
+    const matchTime = new Date(match.match_time).getTime();
+    const now = Date.now();
+    const lockTime = matchTime - 5 * 60 * 1000; // 5 minutes before kickoff
+
+    if (now > lockTime || match.status !== 'NS') {
+      return {
+        success: false,
+        message: 'Trận đấu đã bắt đầu hoặc thời gian dự đoán đã khóa (không thể hủy cược).'
+      };
+    }
+
+    // Delete prediction
+    const { error: deleteError } = await supabase
+      .from('predictions')
+      .delete()
+      .eq('user_id', user.id)
+      .eq('match_id', matchId);
+
+    if (deleteError) {
+      console.error('Prediction delete error:', deleteError);
+      return { success: false, message: 'Không thể hủy dự đoán: ' + deleteError.message };
+    }
+
+    revalidatePath('/dashboard');
+    revalidatePath('/matches');
+    return { success: true, message: 'Hủy dự đoán thành công!' };
+  } catch (error: unknown) {
+    const message = error instanceof Error ? error.message : 'Đã xảy ra lỗi hệ thống';
+    console.error('cancelPrediction action error:', error);
+    return { success: false, message };
+  }
+}
+
+/**
  * Update a match score manually (Admin only).
  */
 export async function updateMatchScoreAdmin(

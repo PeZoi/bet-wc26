@@ -20,31 +20,55 @@ import {
 } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { useDialog } from "@/components/ui/dialog-custom";
+import { Profile } from "@/types";
 
 export default function Navbar() {
 	const pathname = usePathname();
 	const router = useRouter();
 	const { showAlert } = useDialog();
 	const [user, setUser] = useState<User | null>(null);
+	const [profile, setProfile] = useState<Profile | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 	const [syncing, setSyncing] = useState(false);
 	const supabase = createClient();
 
 	useEffect(() => {
-		async function getUser() {
+		async function fetchUserData() {
 			const {
 				data: { user },
 			} = await supabase.auth.getUser();
 			setUser(user);
+			if (user) {
+				const { data: profileData } = await supabase
+					.from("profiles")
+					.select("*")
+					.eq("id", user.id)
+					.single();
+				setProfile(profileData as Profile);
+			} else {
+				setProfile(null);
+			}
 			setLoading(false);
 		}
-		getUser();
+		
+		fetchUserData();
 
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange((_event, session) => {
-			setUser(session?.user ?? null);
+		} = supabase.auth.onAuthStateChange(async (_event, session) => {
+			const currentUser = session?.user ?? null;
+			setUser(currentUser);
+			if (currentUser) {
+				const { data: profileData } = await supabase
+					.from("profiles")
+					.select("*")
+					.eq("id", currentUser.id)
+					.single();
+				setProfile(profileData as Profile);
+			} else {
+				setProfile(null);
+			}
 		});
 
 		return () => {
@@ -71,16 +95,30 @@ export default function Navbar() {
 		setSyncing(true);
 		try {
 			const res = await fetch("/api/sync-scores");
-			const data = await res.json();
+			const data = (await res.json()) as { success: boolean; message?: string };
 			if (data.success) {
 				router.refresh();
+				
+				// Cập nhật lại profile sau khi điểm số thay đổi
+				if (user) {
+					const { data: profileData } = await supabase
+						.from("profiles")
+						.select("*")
+						.eq("id", user.id)
+						.single();
+					if (profileData) {
+						setProfile(profileData as Profile);
+					}
+				}
+
 				await showAlert("Cập nhật tỉ số thực tế thành công!", { type: "success", title: "Thành công" });
 			} else {
 				await showAlert("Cập nhật tỉ số thất bại: " + data.message, { type: "error", title: "Thất bại" });
 			}
-		} catch (error) {
+		} catch (error: unknown) {
 			console.error("Lỗi đồng bộ tỉ số:", error);
-			await showAlert("Có lỗi xảy ra khi cập nhật tỉ số.", { type: "error", title: "Lỗi" });
+			const errMsg = error instanceof Error ? error.message : "Có lỗi xảy ra khi cập nhật tỉ số.";
+			await showAlert("Lỗi: " + errMsg, { type: "error", title: "Lỗi" });
 		} finally {
 			setSyncing(false);
 		}
@@ -164,7 +202,7 @@ export default function Navbar() {
 								<Link
 									href={`/users/${user.id}`}
 									prefetch={true}
-									className='flex items-center gap-2 rounded-full bg-card border border-white/5 py-1 pl-1 pr-2.5 hover:bg-white/5 hover:border-white/10 active:scale-95 transition-all cursor-pointer'
+									className='group flex items-center gap-2.5 rounded-full bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 py-1.5 pl-1.5 pr-3.5 active:scale-95 transition-all duration-200 cursor-pointer shadow-sm'
 								>
 									<img
 										src={
@@ -174,12 +212,19 @@ export default function Navbar() {
 										alt={
 											user.user_metadata?.full_name || "User avatar"
 										}
-										className='h-6.5 w-6.5 rounded-full object-cover bg-white/10'
+										className='h-7.5 w-7.5 rounded-full object-cover bg-white/10 border border-white/5 group-hover:border-primary/30 transition-all duration-200'
 										referrerPolicy='no-referrer'
 									/>
-									<span className='text-[11px] font-bold max-w-[80px] truncate text-foreground'>
-										{user.user_metadata?.full_name || "User"}
-									</span>
+									<div className="flex flex-col items-start leading-none gap-1">
+										<span className='text-[11px] font-bold max-w-[90px] truncate text-slate-300 group-hover:text-white transition-all duration-200'>
+											{user.user_metadata?.full_name || "User"}
+										</span>
+										{profile && (
+											<span className="text-[9.5px] font-bold text-amber-400 font-mono tracking-wider bg-amber-500/10 border border-amber-500/10 px-1.5 py-0.5 rounded-md leading-none shadow-inner">
+												-{new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ
+											</span>
+										)}
+									</div>
 								</Link>
 								<button
 									onClick={handleLogout}
@@ -275,8 +320,13 @@ export default function Navbar() {
 										referrerPolicy='no-referrer'
 									/>
 									<div>
-										<div className='text-sm font-semibold text-foreground'>
-											{user.user_metadata?.full_name || "User"}
+										<div className='text-sm font-semibold text-foreground flex items-center gap-2'>
+											<span>{user.user_metadata?.full_name || "User"}</span>
+											{profile && (
+												<span className="text-[10px] font-bold text-amber-400 font-mono bg-amber-500/10 px-1.5 py-0.5 rounded border border-amber-500/20 leading-none">
+													-{new Intl.NumberFormat('en-US').format(profile.total_loss_points ?? 0)}đ
+												</span>
+											)}
 										</div>
 										<div className='text-xs text-muted-foreground truncate max-w-[200px]'>
 											{user.email}

@@ -20,11 +20,9 @@ export default function ChatClient({
 }: ChatClientProps) {
   const [friendships, setFriendships] = useState<any[]>(initialFriendships);
   const [selectedFriend, setSelectedFriend] = useState<any>(null);
-  const [isLoading, setIsLoading] = useState(false);
 
   // Hàm refresh danh sách bạn bè
   const refreshFriendships = async () => {
-    setIsLoading(true);
     try {
       const res = await getFriendships();
       if (res.success && res.friendships) {
@@ -32,8 +30,6 @@ export default function ChatClient({
       }
     } catch (e) {
       console.error('Lỗi khi tải lại danh sách bạn bè:', e);
-    } finally {
-      setIsLoading(false);
     }
   };
 

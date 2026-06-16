@@ -1,13 +1,13 @@
 import React from 'react';
-import { createClient, createAdminClient } from '@/lib/supabase/server';
+import { createAdminClient } from '@/lib/supabase/server';
 import Navbar from '@/components/navbar';
 import { translateTeamName } from '@/lib/translator';
 import TeamName from '@/components/team-name';
 import TeamLogo from '@/components/team-logo';
-import { ChevronLeft, Calendar, Trophy, Target, Award, CheckCircle2, Star, TrendingDown, TrendingUp } from 'lucide-react';
+import { ChevronLeft, Calendar, Trophy, Target, CheckCircle2, Star, TrendingDown, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { Prediction, Profile, Match } from '@/types';
+import { Prediction, Match } from '@/types';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,7 +20,6 @@ interface UserDetailPageProps {
 export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const { id: userId } = await params;
 
-  const supabase = await createClient();
   const adminSupabase = createAdminClient();
 
   // 1. Fetch User Profile
@@ -46,7 +45,7 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const rank = allProfiles ? allProfiles.findIndex(p => p.id === userId) + 1 : 0;
 
   // 3. Fetch User Predictions joined with Matches
-  const { data: predictionsData, error: predsError } = await adminSupabase
+  const { data: predictionsData } = await adminSupabase
     .from('predictions')
     .select(`
       id,
@@ -77,8 +76,20 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
   const predictions = (predictionsData || []) as unknown as PredictionWithMatch[];
 
   // Split predictions into Finished and Ongoing/Upcoming
-  const finishedPredictions = predictions.filter(p => p.matches?.status === 'FT');
-  const activePredictions = predictions.filter(p => p.matches?.status !== 'FT');
+  const finishedPredictions = predictions
+    .filter(p => p.matches?.status === 'FT')
+    .sort((a, b) => {
+      const timeA = a.matches ? new Date(a.matches.match_time).getTime() : 0;
+      const timeB = b.matches ? new Date(b.matches.match_time).getTime() : 0;
+      return timeB - timeA; // Trận đá sau (thời gian lớn hơn) lên đầu
+    });
+  const activePredictions = predictions
+    .filter(p => p.matches?.status !== 'FT')
+    .sort((a, b) => {
+      const timeA = a.matches ? new Date(a.matches.match_time).getTime() : 0;
+      const timeB = b.matches ? new Date(b.matches.match_time).getTime() : 0;
+      return timeA - timeB;
+    });
 
   const winRate = finishedPredictions.length > 0
     ? Math.round((profile.exact_scores_count || 0) / finishedPredictions.length * 100)

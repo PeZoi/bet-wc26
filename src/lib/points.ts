@@ -1,9 +1,10 @@
 import { createAdminClient } from '@/lib/supabase/server';
+import { SupabaseClient } from '@supabase/supabase-js';
 
 /**
  * Helper để cập nhật tổng điểm và số lần đoán trúng cho danh sách user_id bị ảnh hưởng.
  */
-async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promise<void> {
+async function updateProfilesPoints(supabase: SupabaseClient, userIds: Set<string>): Promise<void> {
   console.log(`Cập nhật điểm cho các user bị ảnh hưởng: ${userIds.size} users`);
 
   for (const userId of userIds) {
@@ -19,12 +20,14 @@ async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promis
       continue;
     }
 
+    const preds = (userPreds || []) as { points_earned: number | null; is_correct: boolean | null }[];
+
     // Số lần đoán đúng (is_correct = true)
-    const correctCount = userPreds.filter((p: any) => p.is_correct === true).length;
+    const correctCount = preds.filter((p) => p.is_correct === true).length;
     // Tổng điểm thua (chỉ tính các dự đoán sai)
-    const lossPoints = userPreds
-      .filter((p: any) => p.is_correct === false)
-      .reduce((sum: number, p: any) => sum + (p.points_earned || 0), 0);
+    const lossPoints = preds
+      .filter((p) => p.is_correct === false)
+      .reduce((sum: number, p) => sum + (p.points_earned || 0), 0);
     // Tổng điểm = số lần đoán đúng (mỗi lần 1đ). Điểm thua không cộng dồn vào tổng điểm để xếp hạng
     const totalPoints = correctCount;
 
@@ -50,7 +53,7 @@ async function updateProfilesPoints(supabase: any, userIds: Set<string>): Promis
 /**
  * Tự động phân định kết quả các kèo cá nhân gắn với trận đấu vừa kết thúc
  */
-async function autoResolveCustomBets(supabase: any, matchId: number, homeScore: number, awayScore: number): Promise<void> {
+async function autoResolveCustomBets(supabase: SupabaseClient, matchId: number, homeScore: number, awayScore: number): Promise<void> {
   console.log(`Tự động phân định kèo cá nhân cho trận đấu ${matchId} (Tỉ số: ${homeScore}-${awayScore})`);
 
   try {
@@ -111,7 +114,7 @@ async function autoResolveCustomBets(supabase: any, matchId: number, homeScore: 
         console.error(`Lỗi gửi tin nhắn thông báo kết quả kèo ${bet.id}:`, msgError.message);
       }
     }
-  } catch (err: any) {
+  } catch (err: unknown) {
     console.error(`Lỗi trong autoResolveCustomBets cho trận ${matchId}:`, err);
   }
 }

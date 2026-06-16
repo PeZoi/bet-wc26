@@ -15,8 +15,6 @@ export default function ChatSidebar({
   friendships,
   selectedFriendId,
   onSelectFriend,
-  onRefreshFriendships,
-  currentUserId
 }: ChatSidebarProps) {
   const [searchQuery, setSearchQuery] = useState('');
 

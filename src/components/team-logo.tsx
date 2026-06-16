@@ -19,8 +19,11 @@ export default function TeamLogo({
   const [hasError, setHasError] = useState(false);
 
   useEffect(() => {
-    setImgSrc(src);
-    setHasError(false);
+    const timer = setTimeout(() => {
+      setImgSrc(src);
+      setHasError(false);
+    }, 0);
+    return () => clearTimeout(timer);
   }, [src]);
 
   const fallbackUrl = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(teamName)}`;

@@ -4,7 +4,7 @@ import Navbar from '@/components/navbar';
 import { translateTeamName } from '@/lib/translator';
 import TeamName from '@/components/team-name';
 import TeamLogo from '@/components/team-logo';
-import { ChevronLeft, Calendar, MapPin, Trophy, Target, Users, HelpCircle } from 'lucide-react';
+import { ChevronLeft, Calendar, Target, Users, HelpCircle } from 'lucide-react';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Profile } from '@/types';
@@ -58,7 +58,7 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
   const currentUserId = user?.id;
 
   // 2. Fetch User Predictions for this Match
-  const { data: predictionsData, error: predsError } = await adminSupabase
+  const { data: predictionsData } = await adminSupabase
     .from('predictions')
     .select(`
       id,

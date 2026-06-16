@@ -92,7 +92,7 @@ export default function ChatWindow({ friend, currentUserId, onBack }: ChatWindow
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [friend?.id, currentUserId]);
+  }, [friend?.id, currentUserId, supabase]);
 
   const handleSend = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -136,7 +136,6 @@ export default function ChatWindow({ friend, currentUserId, onBack }: ChatWindow
 
   // Hàm helper để kiểm tra xem tin nhắn có chứa mã kèo không và parse nó
   const renderMessageContent = (message: any) => {
-    const isMe = message.sender_id === currentUserId;
     const betIdRegex = /\[Mã Kèo:\s*([a-f0-9-]{36})\]/;
     const match = message.content.match(betIdRegex);
 

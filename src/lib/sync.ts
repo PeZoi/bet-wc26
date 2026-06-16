@@ -260,16 +260,18 @@ export async function syncMatchesHelper() {
 
       return matchesToUpsert.length;
     }
-  } catch (error: any) {
-    const getErrorMessage = (err: any): string => {
+  } catch (error: unknown) {
+    const getErrorMessage = (err: unknown): string => {
       if (!err) return 'Unknown error';
-      if (err.response) {
-        return `API Error ${err.response.status}: ${typeof err.response.data === 'object' ? JSON.stringify(err.response.data) : String(err.response.data)}`;
+      const errorObj = err as Record<string, unknown>;
+      if (errorObj.response) {
+        const response = errorObj.response as Record<string, unknown>;
+        return `API Error ${String(response.status)}: ${typeof response.data === 'object' ? JSON.stringify(response.data) : String(response.data)}`;
       }
-      if (err.request) {
-        return `Network Error (No response): ${err.message || err.code || 'Timeout/Blocked'}`;
+      if (errorObj.request) {
+        return `Network Error (No response): ${String(errorObj.message || errorObj.code || 'Timeout/Blocked')}`;
       }
-      return err.message || String(err);
+      return err instanceof Error ? err.message : String(err);
     };
     layer1Error = getErrorMessage(error);
     console.warn('worldcup26.ir sync failed, trying fallback to API-Football/API-Sports:', layer1Error);

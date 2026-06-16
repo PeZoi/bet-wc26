@@ -59,16 +59,16 @@ export default function MatchesList({
     router.refresh();
   };
 
-  const handleSyncMatches = async () => {
+  const handleSyncScores = async () => {
     setIsSyncing(true);
     try {
-      const res = await fetch('/api/sync-matches');
-      const data = await res.json();
+      const res = await fetch('/api/sync-scores');
+      const data = (await res.json()) as { success: boolean; message?: string };
       if (data.success) {
-        await showAlert('Đồng bộ lịch thi đấu thành công!', { type: 'success', title: 'Thành công' });
+        await showAlert('Cập nhật tỉ số thành công!', { type: 'success', title: 'Thành công' });
         router.refresh();
       } else {
-        await showAlert('Đồng bộ thất bại: ' + data.message, { type: 'error', title: 'Thất bại' });
+        await showAlert('Cập nhật thất bại: ' + data.message, { type: 'error', title: 'Thất bại' });
       }
     } catch (e: unknown) {
       const errMsg = e instanceof Error ? e.message : 'Đã xảy ra lỗi';
@@ -256,13 +256,13 @@ export default function MatchesList({
           {/* Sync Button */}
           <div className="w-full md:w-auto flex justify-end">
             <button
-              onClick={handleSyncMatches}
+              onClick={handleSyncScores}
               disabled={isSyncing}
-              className="w-full md:w-auto flex items-center justify-center gap-1.5 text-xs font-semibold py-2.5 px-4 rounded-xl border border-white/5 bg-white/5 text-muted-foreground hover:text-foreground hover:bg-white/10 transition-colors cursor-pointer disabled:opacity-50"
-              title="Đồng bộ lịch thi đấu từ nguồn dữ liệu"
+              className="w-full md:w-auto flex items-center justify-center gap-1.5 text-xs font-bold py-2.5 px-4 rounded-xl border border-primary/20 bg-primary/5 text-primary hover:bg-primary/10 transition-colors cursor-pointer disabled:opacity-50"
+              title="Cập nhật tỉ số & kết quả mới nhất"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
-              {isSyncing ? 'Đang đồng bộ...' : 'Cập nhật lịch'}
+              {isSyncing ? 'Đang cập nhật...' : 'Cập nhật tỉ số'}
             </button>
           </div>
         </div>

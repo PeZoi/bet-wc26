@@ -2,10 +2,10 @@
 
 import React, { useState } from 'react';
 import { Match, Prediction } from '@/types';
-import { submitPrediction } from '@/app/actions';
+import { submitPrediction, cancelPrediction } from '@/app/actions';
 import { translateTeamName } from '@/lib/translator';
 import TeamName from '@/components/team-name';
-import { X, ChevronUp, ChevronDown, Check, Loader2 } from 'lucide-react';
+import { X, Check, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface PredictionModalProps {
@@ -41,17 +41,6 @@ export default function PredictionModal({
 
   if (!match) return null;
 
-  const getHandicapText = (team: 'home' | 'away') => {
-    const hTeam = match.handicap_team || 'none';
-    const hVal = Number(match.handicap_value || 0);
-    if (hTeam === 'none' || hVal === 0) return '';
-    if (hTeam === team) {
-      return `(Chấp ${hVal})`;
-    } else {
-      return `(Được chấp ${hVal})`;
-    }
-  };
-
   const isHandicapMatch = (match.handicap_team && match.handicap_team !== 'none' && Number(match.handicap_value || 0) > 0);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -78,6 +67,31 @@ export default function PredictionModal({
       }
     } catch (err: unknown) {
       const errMsg = err instanceof Error ? err.message : 'Không thể gửi dự đoán.';
+      setErrorMsg(errMsg);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCancel = async () => {
+    setIsSubmitting(true);
+    setErrorMsg('');
+    setSuccessMsg('');
+
+    try {
+      const res = await cancelPrediction(match.id);
+      if (res.success) {
+        setSuccessMsg(res.message || 'Hủy cược thành công!');
+        setPredictionChoice(null);
+        setTimeout(() => {
+          onSuccess();
+          onClose();
+        }, 1200);
+      } else {
+        setErrorMsg(res.message || 'Có lỗi xảy ra.');
+      }
+    } catch (err: unknown) {
+      const errMsg = err instanceof Error ? err.message : 'Không thể hủy dự đoán.';
       setErrorMsg(errMsg);
     } finally {
       setIsSubmitting(false);
@@ -196,25 +210,38 @@ export default function PredictionModal({
               )}
 
               {/* Action Buttons */}
-              <div className="flex gap-3 pt-2">
-                <button
-                  type="button"
-                  onClick={onClose}
-                  className="flex-1 rounded-xl bg-white/5 border border-white/5 text-sm font-semibold text-muted-foreground hover:text-foreground hover:bg-white/10 py-3 transition-colors cursor-pointer"
-                >
-                  Hủy
-                </button>
-                <button
-                  type="submit"
-                  disabled={isSubmitting || !!successMsg}
-                  className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-sm font-semibold text-primary-foreground hover:bg-primary/95 py-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
-                >
-                  {isSubmitting ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    'Lưu dự đoán'
-                  )}
-                </button>
+              <div className="space-y-2.5 pt-2">
+                <div className="flex gap-3">
+                  <button
+                    type="button"
+                    onClick={onClose}
+                    className="flex-1 rounded-xl bg-white/5 border border-white/5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:bg-white/10 py-3 transition-colors cursor-pointer"
+                  >
+                    Đóng
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={isSubmitting || !!successMsg}
+                    className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-primary text-xs font-semibold text-primary-foreground hover:bg-primary/95 py-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-primary/20"
+                  >
+                    {isSubmitting ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      'Lưu dự đoán'
+                    )}
+                  </button>
+                </div>
+
+                {userPrediction && (
+                  <button
+                    type="button"
+                    onClick={handleCancel}
+                    disabled={isSubmitting || !!successMsg}
+                    className="w-full rounded-xl bg-rose-500/10 hover:bg-rose-500/20 border border-rose-500/25 text-xs font-bold text-rose-400 py-3 transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
+                  >
+                    {isSubmitting ? 'Đang xử lý...' : 'Hủy dự đoán hiện tại'}
+                  </button>
+                )}
               </div>
             </form>
           </motion.div>

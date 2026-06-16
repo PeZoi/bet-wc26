@@ -42,8 +42,13 @@ interface GroupStandingsClientProps {
 function Portal({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   useEffect(() => {
-    setMounted(true);
-    return () => setMounted(false);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => {
+      clearTimeout(timer);
+      setMounted(false);
+    };
   }, []);
   return mounted ? createPortal(children, document.body) : null;
 }
