@@ -36,21 +36,28 @@ export default function Navbar() {
 
 	useEffect(() => {
 		async function fetchUserData() {
-			const {
-				data: { user },
-			} = await supabase.auth.getUser();
-			setUser(user);
-			if (user) {
-				const { data: profileData } = await supabase
-					.from("profiles")
-					.select("*")
-					.eq("id", user.id)
-					.single();
-				setProfile(profileData as Profile);
-			} else {
+			try {
+				const {
+					data: { user },
+				} = await supabase.auth.getUser();
+				setUser(user);
+				if (user) {
+					const { data: profileData } = await supabase
+						.from("profiles")
+						.select("*")
+						.eq("id", user.id)
+						.single();
+					setProfile(profileData as Profile);
+				} else {
+					setProfile(null);
+				}
+			} catch (error) {
+				console.error("Lỗi khi tải thông tin user:", error);
+				setUser(null);
 				setProfile(null);
+			} finally {
+				setLoading(false);
 			}
-			setLoading(false);
 		}
 		
 		fetchUserData();
@@ -58,17 +65,23 @@ export default function Navbar() {
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange(async (_event, session) => {
-			const currentUser = session?.user ?? null;
-			setUser(currentUser);
-			if (currentUser) {
-				const { data: profileData } = await supabase
-					.from("profiles")
-					.select("*")
-					.eq("id", currentUser.id)
-					.single();
-				setProfile(profileData as Profile);
-			} else {
-				setProfile(null);
+			try {
+				const currentUser = session?.user ?? null;
+				setUser(currentUser);
+				if (currentUser) {
+					const { data: profileData } = await supabase
+						.from("profiles")
+						.select("*")
+						.eq("id", currentUser.id)
+						.single();
+					setProfile(profileData as Profile);
+				} else {
+					setProfile(null);
+				}
+			} catch (error) {
+				console.error("Lỗi khi thay đổi trạng thái auth:", error);
+			} finally {
+				setLoading(false);
 			}
 		});
 
