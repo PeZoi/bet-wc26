@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Match } from '@/types';
 import UserAvatar from '@/components/user-avatar';
+import CopyPredictionsButton from '@/components/copy-predictions-button';
 
 export const dynamic = 'force-dynamic';
 
@@ -321,8 +322,22 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                 
                 {/* Column 1: Sắp thi đấu & LIVE */}
                 <div className="space-y-4">
-                  <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2 flex items-center justify-between">
+                  <h3 className="text-xs font-bold text-white uppercase tracking-wider border-b border-white/5 pb-2.5 flex items-center justify-between select-none">
                     <span>Trận sắp diễn ra ({activePredictions.length})</span>
+                    {activePredictions.length > 0 && (
+                      <CopyPredictionsButton text={
+                        activePredictions
+                          .map(p => {
+                            const match = p.matches;
+                            if (!match) return null;
+                            if (p.prediction_choice === 'home') return `- ${translateTeamName(match.home_team)}`;
+                            if (p.prediction_choice === 'away') return `- ${translateTeamName(match.away_team)}`;
+                            return `- Hòa (${translateTeamName(match.home_team)} - ${translateTeamName(match.away_team)})`;
+                          })
+                          .filter(Boolean)
+                          .join('\n')
+                      } />
+                    )}
                   </h3>
 
                   {activePredictions.length === 0 ? (
