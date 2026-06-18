@@ -43,7 +43,7 @@ const STADIUM_OFFSETS: Record<string, number> = {
 
 // Axios instance optimized for API sync: timeout 15s, browser User-Agent, and bypassed SSL checks
 const axiosInstance = axios.create({
-  timeout: 15000,
+  timeout: 5000,
   headers: {
     'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
     'Accept': 'application/json, text/plain, */*'
@@ -69,14 +69,14 @@ export async function syncMatchesHelper() {
     // 1. Fetch Teams for Flags mapping
     let teamsResponse;
     try {
-      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams', { timeout: 15000 });
+      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams', { timeout: 5000 });
     } catch (err) {
       console.warn('Direct fetch teams failed, trying proxy...', err instanceof Error ? err.message : String(err));
       try {
-        teamsResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/teams`, { timeout: 15000 });
+        teamsResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/teams`, { timeout: 5000 });
       } catch (proxyErr) {
         console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
-        teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 15000 });
+        teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 5000 });
       }
     }
     let teamsData = teamsResponse.data;
@@ -96,14 +96,14 @@ export async function syncMatchesHelper() {
     // 2. Fetch Games
     let gamesResponse;
     try {
-      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games', { timeout: 15000 });
+      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games', { timeout: 5000 });
     } catch (err) {
       console.warn('Direct fetch games failed, trying proxy...', err instanceof Error ? err.message : String(err));
       try {
-        gamesResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/games`, { timeout: 15000 });
+        gamesResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/games`, { timeout: 5000 });
       } catch (proxyErr) {
         console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
-        gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 15000 });
+        gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 5000 });
       }
     }
 

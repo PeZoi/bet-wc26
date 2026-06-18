@@ -108,7 +108,7 @@ export default function Navbar() {
 		if (syncing) return;
 		setSyncing(true);
 		try {
-			const res = await fetch("/api/sync-scores");
+			const res = await fetch("/api/sync-scores?wait=true");
 			const data = (await res.json()) as { success: boolean; message?: string };
 			if (data.success) {
 				router.refresh();
