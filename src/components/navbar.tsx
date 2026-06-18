@@ -21,6 +21,7 @@ import {
 import { User } from "@supabase/supabase-js";
 import { useDialog } from "@/components/ui/dialog-custom";
 import { Profile } from "@/types";
+import UserAvatar from "@/components/user-avatar";
 
 export default function Navbar() {
 	const pathname = usePathname();
@@ -204,16 +205,10 @@ export default function Navbar() {
 									prefetch={true}
 									className='group flex items-center gap-2.5 rounded-full bg-white/[0.02] hover:bg-white/[0.06] border border-white/5 hover:border-white/10 py-1.5 pl-1.5 pr-3.5 active:scale-95 transition-all duration-200 cursor-pointer shadow-sm'
 								>
-									<img
-										src={
-											user.user_metadata?.avatar_url ||
-											"https://api.dicebear.com/7.x/bottts/svg"
-										}
-										alt={
-											user.user_metadata?.full_name || "User avatar"
-										}
-										className='h-7.5 w-7.5 rounded-full object-cover bg-white/10 border border-white/5 group-hover:border-primary/30 transition-all duration-200'
-										referrerPolicy='no-referrer'
+									<UserAvatar
+										src={user.user_metadata?.avatar_url}
+										displayName={user.user_metadata?.full_name || profile?.display_name}
+										className='h-7.5 w-7.5 group-hover:border-primary/30 transition-all duration-200'
 									/>
 									<div className="flex flex-col items-start leading-none gap-1">
 										<span className='text-[11px] font-bold max-w-[90px] truncate text-slate-300 group-hover:text-white transition-all duration-200'>
@@ -308,16 +303,10 @@ export default function Navbar() {
 									onClick={() => setMobileMenuOpen(false)}
 									className='flex items-center gap-3 hover:bg-white/5 p-1.5 rounded-xl transition-colors cursor-pointer w-full'
 								>
-									<img
-										src={
-											user.user_metadata?.avatar_url ||
-											"https://api.dicebear.com/7.x/bottts/svg"
-										}
-										alt={
-											user.user_metadata?.full_name || "User avatar"
-										}
-										className='h-9 w-9 rounded-full object-cover bg-white/10'
-										referrerPolicy='no-referrer'
+									<UserAvatar
+										src={user.user_metadata?.avatar_url}
+										displayName={user.user_metadata?.full_name || profile?.display_name}
+										className='h-9 w-9'
 									/>
 									<div>
 										<div className='text-sm font-semibold text-foreground flex items-center gap-2'>

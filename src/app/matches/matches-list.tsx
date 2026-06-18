@@ -1,13 +1,13 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Match, Prediction } from '@/types';
 import MatchCard from '@/components/match-card';
 import BracketCard from '@/components/bracket-card';
 import PredictionModal from '@/components/prediction-modal';
 import { translateTeamName } from '@/lib/translator';
 import { Search, Filter, RefreshCw, Grid, GitFork } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname, useSearchParams } from 'next/navigation';
 import { useDialog } from '@/components/ui/dialog-custom';
 
 interface MatchesListProps {
@@ -26,13 +26,82 @@ export default function MatchesList({
   isAdmin = false
 }: MatchesListProps) {
   const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { showAlert } = useDialog();
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedStage, setSelectedStage] = useState<string>('all');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'finished' | 'upcoming'>('all');
-  const [viewMode, setViewMode] = useState<'list' | 'bracket'>('list');
+
+  // Khởi tạo các state lọc từ URL params (chỉ chạy một lần khi component mount)
+  const [searchTerm, setSearchTerm] = useState(() => searchParams.get('search') || '');
+  const [selectedStage, setSelectedStage] = useState(() => searchParams.get('stage') || 'all');
+  const [statusFilter, setStatusFilter] = useState<'all' | 'finished' | 'upcoming'>(() => {
+    const status = searchParams.get('status');
+    return (status === 'finished' || status === 'upcoming') ? status : 'all';
+  });
+  const [viewMode, setViewMode] = useState<'list' | 'bracket'>(() => {
+    const view = searchParams.get('view');
+    return view === 'bracket' ? 'bracket' : 'list';
+  });
+
   const predictions = initialPredictions;
   const [isSyncing, setIsSyncing] = useState(false);
+
+  // Hàm cập nhật URL ngoại tuyến (client-side only) bằng history.replaceState
+  // Điều này giúp tránh độ trễ do server-side navigation của Next.js router.
+  const updateURL = (search: string, stage: string, status: string, view: string) => {
+    const params = new URLSearchParams();
+    if (search) params.set('search', search);
+    if (stage !== 'all') params.set('stage', stage);
+    if (status !== 'all') params.set('status', status);
+    if (view !== 'list') params.set('view', view);
+    
+    const newQuery = params.toString();
+    const newUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
+    
+    window.history.replaceState(null, '', newUrl);
+  };
+
+  // Các event handlers thay đổi bộ lọc lập tức trên client & đồng bộ URL
+  const handleStageChange = (stageValue: string) => {
+    setSelectedStage(stageValue);
+    updateURL(searchTerm, stageValue, statusFilter, viewMode);
+  };
+
+  const handleStatusChange = (statusValue: 'all' | 'finished' | 'upcoming') => {
+    setStatusFilter(statusValue);
+    updateURL(searchTerm, selectedStage, statusValue, viewMode);
+  };
+
+  const handleViewChange = (viewValue: 'list' | 'bracket') => {
+    setViewMode(viewValue);
+    updateURL(searchTerm, selectedStage, statusFilter, viewValue);
+  };
+
+  // 1. Debounce cập nhật URL cho ô tìm kiếm
+  useEffect(() => {
+    const delayDebounceId = setTimeout(() => {
+      updateURL(searchTerm, selectedStage, statusFilter, viewMode);
+    }, 300);
+
+    return () => clearTimeout(delayDebounceId);
+  }, [searchTerm, selectedStage, statusFilter, viewMode]);
+
+  // 2. Đồng bộ URL params ngược lại State khi người dùng nhấn nút Back/Forward của trình duyệt
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      setSearchTerm(params.get('search') || '');
+      setSelectedStage(params.get('stage') || 'all');
+      
+      const status = params.get('status') || 'all';
+      setStatusFilter((status === 'finished' || status === 'upcoming') ? status : 'all');
+      
+      const view = params.get('view') || 'list';
+      setViewMode(view === 'bracket' ? 'bracket' : 'list');
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Modal State
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
@@ -229,7 +298,7 @@ export default function MatchesList({
             {/* View Mode Toggle Switch */}
             <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-auto justify-center">
               <button
-                onClick={() => setViewMode('list')}
+                onClick={() => handleViewChange('list')}
                 className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
                   viewMode === 'list'
                     ? 'bg-primary text-primary-foreground shadow'
@@ -240,7 +309,7 @@ export default function MatchesList({
                 Danh sách
               </button>
               <button
-                onClick={() => setViewMode('bracket')}
+                onClick={() => handleViewChange('bracket')}
                 className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
                   viewMode === 'bracket'
                     ? 'bg-primary text-primary-foreground shadow'
@@ -284,7 +353,7 @@ export default function MatchesList({
                 ].map((statusOpt) => (
                   <button
                     key={statusOpt.value}
-                    onClick={() => setStatusFilter(statusOpt.value as 'all' | 'finished' | 'upcoming')}
+                    onClick={() => handleStatusChange(statusOpt.value as 'all' | 'finished' | 'upcoming')}
                     className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
                       statusFilter === statusOpt.value
                         ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-primary/20 shadow-md shadow-primary/10'
@@ -309,7 +378,7 @@ export default function MatchesList({
                 {stages.map((stage) => (
                   <button
                     key={stage.value}
-                    onClick={() => setSelectedStage(stage.value)}
+                    onClick={() => handleStageChange(stage.value)}
                     className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
                       selectedStage === stage.value
                         ? 'bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5'

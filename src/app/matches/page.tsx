@@ -1,4 +1,4 @@
-import React from "react";
+import React, { Suspense } from "react";
 import { createClient, createAdminClient } from "@/lib/supabase/server";
 import Navbar from "@/components/navbar";
 import MatchesList from "./matches-list";
@@ -67,13 +67,19 @@ export default async function MatchesPage() {
 			<Navbar />
 
 			<main className='flex-1 mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8'>
-				<MatchesList
-					initialMatches={matches}
-					initialPredictions={predictions}
-					allPredictions={allPredictions}
-					isLoggedIn={isLoggedIn}
-					isAdmin={isAdmin}
-				/>
+				<Suspense fallback={
+					<div className="flex items-center justify-center py-12">
+						<div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+					</div>
+				}>
+					<MatchesList
+						initialMatches={matches}
+						initialPredictions={predictions}
+						allPredictions={allPredictions}
+						isLoggedIn={isLoggedIn}
+						isAdmin={isAdmin}
+					/>
+				</Suspense>
 			</main>
 
 			<footer className='border-t border-white/5 py-6 text-center text-xs text-muted-foreground mt-8'>

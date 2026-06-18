@@ -5,6 +5,7 @@ import { Profile } from '@/types';
 import { Medal, Trophy } from 'lucide-react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import UserAvatar from '@/components/user-avatar';
 
 interface LeaderboardTableProps {
   profiles: Profile[];
@@ -108,15 +109,12 @@ export default function LeaderboardTable({
                     prefetch={true}
                     className="flex items-center gap-3 hover:text-primary transition-colors cursor-pointer group w-max max-w-full"
                   >
-                    <img
-                      src={profile.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'}
-                      alt={`${profile.display_name} avatar`}
-                      className={`h-9 w-9 rounded-full object-cover border transition-all group-hover:scale-105 ${
+                    <UserAvatar
+                      src={profile.avatar_url}
+                      displayName={profile.display_name}
+                      className={`h-9 w-9 border transition-all group-hover:scale-105 ${
                         isCurrentUser ? 'border-primary group-hover:border-primary/80' : 'border-white/5 group-hover:border-primary/50'
                       }`}
-                      onError={(e) => {
-                        (e.target as HTMLImageElement).src = 'https://api.dicebear.com/7.x/bottts/svg?seed=' + profile.id;
-                      }}
                     />
                     <div className="flex flex-col min-w-0">
                       <span className={`text-sm truncate font-medium group-hover:underline ${isCurrentUser ? 'text-primary font-bold' : 'text-white'}`}>

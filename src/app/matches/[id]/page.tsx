@@ -9,6 +9,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Profile } from '@/types';
 import MatchCountdown from '@/components/match-countdown';
+import UserAvatar from '@/components/user-avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -356,10 +357,10 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                           prefetch={true}
                           className="flex items-center gap-2 min-w-0 hover:text-primary transition-colors cursor-pointer group"
                         >
-                          <img 
-                            src={p.profiles?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'} 
-                            className="h-6 w-6 rounded-full bg-white/5 object-cover transition-transform group-hover:scale-105" 
-                            alt="" 
+                          <UserAvatar
+                            src={p.profiles?.avatar_url}
+                            displayName={p.profiles?.display_name}
+                            className="h-6 w-6 transition-transform group-hover:scale-105"
                           />
                           <span className="font-bold text-white truncate group-hover:underline">{p.profiles?.display_name || 'Người chơi'}</span>
                         </Link>
@@ -399,10 +400,10 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                           prefetch={true}
                           className="flex items-center gap-2 min-w-0 hover:text-primary transition-colors cursor-pointer group"
                         >
-                          <img 
-                            src={p.profiles?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'} 
-                            className="h-6 w-6 rounded-full bg-white/5 object-cover transition-transform group-hover:scale-105" 
-                            alt="" 
+                          <UserAvatar
+                            src={p.profiles?.avatar_url}
+                            displayName={p.profiles?.display_name}
+                            className="h-6 w-6 transition-transform group-hover:scale-105"
                           />
                           <span className="font-bold text-white truncate group-hover:underline">{p.profiles?.display_name || 'Người chơi'}</span>
                         </Link>

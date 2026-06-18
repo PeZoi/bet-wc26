@@ -6,6 +6,7 @@ import MatchCard from '@/components/match-card';
 import { Trophy, ArrowRight, ShieldCheck, Flame, Star } from 'lucide-react';
 import { Match, Profile, Prediction } from '@/types';
 import { User } from '@supabase/supabase-js';
+import UserAvatar from '@/components/user-avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -142,10 +143,10 @@ export default async function LandingPage() {
                         <span className="font-mono text-sm font-bold text-muted-foreground w-4 text-center">
                           {index + 1}
                         </span>
-                        <img
+                        <UserAvatar
                           src={profile.avatar_url}
-                          alt={profile.display_name}
-                          className="h-9 w-9 rounded-full bg-white/5"
+                          displayName={profile.display_name}
+                          className="h-9 w-9"
                         />
                         <span className="text-sm font-bold text-white">
                           {profile.display_name}

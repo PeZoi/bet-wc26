@@ -8,6 +8,7 @@ import { ChevronLeft, Calendar, Trophy, Target, CheckCircle2, Star, TrendingDown
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Prediction, Match } from '@/types';
+import UserAvatar from '@/components/user-avatar';
 
 export const dynamic = 'force-dynamic';
 
@@ -213,13 +214,11 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                 {/* Avatar with Glow Ring */}
                 <div className="relative group/avatar">
                   <div className="absolute inset-0 rounded-full bg-gradient-to-tr from-primary via-emerald-500 to-cyan-500 opacity-20 blur-md group-hover/avatar:opacity-40 transition-opacity duration-300" />
-                  <div className="h-20 w-20 rounded-full overflow-hidden border border-white/10 bg-[#11141d] flex items-center justify-center relative z-10 shadow-xl transition-transform duration-300 group-hover/avatar:scale-105 ring-4 ring-white/5">
-                    <img
-                      src={avatarUrl}
-                      alt={profile.display_name}
-                      className="h-full w-full object-cover"
-                    />
-                  </div>
+                  <UserAvatar
+                    src={avatarUrl}
+                    displayName={profile.display_name}
+                    className="h-20 w-20 relative z-10 ring-4 ring-white/5 shadow-xl transition-transform duration-300 group-hover/avatar:scale-105 bg-[#11141d]"
+                  />
                 </div>
                 
                 <div className="space-y-2.5">

@@ -11,6 +11,7 @@ import { useRouter } from 'next/navigation';
 import { useDialog } from '@/components/ui/dialog-custom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { updateMatchScoreAdmin } from '@/app/actions';
+import UserAvatar from '@/components/user-avatar';
 
 interface MatchCardProps {
   match: Match;
@@ -286,12 +287,11 @@ export default function MatchCard({
       <div className="flex items-center justify-center gap-1 mt-1.5 select-none h-6">
         <div className="flex -space-x-1.5 overflow-hidden">
           {bettors.slice(0, 3).map((pred, i) => (
-            <img
+            <UserAvatar
               key={pred.id || i}
-              className={`inline-block h-5 w-5 rounded-full ring-2 ${ringClass} object-cover bg-white/5 transition-transform hover:scale-110 hover:z-10`}
-              src={pred.profiles?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'}
-              alt={pred.profiles?.display_name || 'Người chơi'}
-              title={pred.profiles?.display_name || 'Người chơi'}
+              src={pred.profiles?.avatar_url}
+              displayName={pred.profiles?.display_name}
+              className={`inline-block h-5 w-5 rounded-full ring-2 ${ringClass} transition-transform hover:scale-110 hover:z-10`}
             />
           ))}
           {bettors.length > 3 && (

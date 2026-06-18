@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 import { Match, Prediction, Profile } from '@/types';
 import PredictionModal from '@/components/prediction-modal';
 import { translateTeamName } from '@/lib/translator';
+import UserAvatar from '@/components/user-avatar';
 import TeamName from '@/components/team-name';
 import { Clock, ArrowRight, Compass, Lock, CheckCircle2, Trophy, Award, Star, Target, TrendingUp } from 'lucide-react';
 import Link from 'next/link';
@@ -174,7 +175,7 @@ export default function DashboardClient({
         <div className="absolute -right-10 -bottom-10 h-32 w-32 rounded-full bg-secondary/5 blur-[50px] pointer-events-none" />
         <div className="flex items-center gap-4 relative z-10 w-full sm:w-auto">
           <div className="h-16 w-16 rounded-2xl overflow-hidden border border-white/10 shadow-lg bg-white/5 flex items-center justify-center flex-shrink-0">
-            <img src={userProfile?.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'} alt="Avatar" className="h-full w-full object-cover" />
+            <UserAvatar src={userProfile?.avatar_url} displayName={userProfile?.display_name} className="h-full w-full" />
           </div>
           <div className="min-w-0">
             <span className="inline-flex items-center gap-1 text-[9px] font-extrabold text-primary bg-primary/10 border border-primary/20 px-2.5 py-0.5 rounded-full uppercase tracking-wider">
@@ -368,10 +369,10 @@ export default function DashboardClient({
                     <span className={`font-mono font-black text-[10px] w-5 h-5 rounded-lg border flex items-center justify-center flex-shrink-0 ${badgeColors[idx] || 'bg-white/5 border-white/10 text-muted-foreground'}`}>
                       {idx + 1}
                     </span>
-                    <img
-                      src={profile.avatar_url || 'https://api.dicebear.com/7.x/bottts/svg'}
-                      alt={profile.display_name}
-                      className="h-6 w-6 rounded-full object-cover bg-white/5 border border-white/10"
+                    <UserAvatar
+                      src={profile.avatar_url}
+                      displayName={profile.display_name}
+                      className="h-6 w-6"
                     />
                     <span className="font-bold text-white truncate max-w-[120px]">
                       {profile.display_name}

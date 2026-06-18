@@ -2,6 +2,7 @@
 
 import React, { useState } from 'react';
 import { Search, Users, MessageSquare, AlertCircle } from 'lucide-react';
+import UserAvatar from '@/components/user-avatar';
 
 interface ChatSidebarProps {
   friendships: any[];
@@ -84,13 +85,10 @@ export default function ChatSidebar({
                       : 'bg-white/[0.01] hover:bg-white/5 border-transparent text-muted-foreground hover:text-white'
                   }`}
                 >
-                  <img
-                    src={f.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(f.display_name)}`}
-                    alt={f.display_name}
-                    className="h-8 w-8 rounded-full object-cover bg-white/5 flex-shrink-0"
-                    onError={(e) => {
-                      (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(f.display_name)}`;
-                    }}
+                  <UserAvatar
+                    src={f.avatar_url}
+                    displayName={f.display_name}
+                    className="h-8 w-8"
                   />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-1">

@@ -7,6 +7,7 @@ import { sendPrivateMessage, getChatMessages } from '@/app/actions/chat';
 import ChallengeCard from './challenge-card';
 import CreateBetModal from './create-bet-modal';
 import { useDialog } from '@/components/ui/dialog-custom';
+import UserAvatar from '@/components/user-avatar';
 
 interface ChatWindowProps {
   friend: any;
@@ -174,13 +175,10 @@ export default function ChatWindow({ friend, currentUserId, onBack }: ChatWindow
             </button>
           )}
           
-          <img
-            src={friend.avatar_url || `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(friend.display_name)}`}
-            alt={friend.display_name}
-            className="h-8 w-8 rounded-full object-cover bg-white/5"
-            onError={(e) => {
-              (e.target as HTMLImageElement).src = `https://api.dicebear.com/7.x/initials/svg?seed=${encodeURIComponent(friend.display_name)}`;
-            }}
+          <UserAvatar
+            src={friend.avatar_url}
+            displayName={friend.display_name}
+            className="h-8 w-8"
           />
           <div className="min-w-0">
             <h3 className="font-bold text-sm text-white truncate leading-snug">{friend.display_name}</h3>
