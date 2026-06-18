@@ -339,6 +339,49 @@ export default function GroupStandingsClient({
                       const userPrediction = predictions.find(p => p.match_id === match.id);
                       const isLocked = matchTime.getTime() - Date.now() <= 5 * 60 * 1000 || match.status !== 'NS';
 
+                      // Xác định class động dựa trên kết quả cược của người dùng (Thắng/Thua/Hoà)
+                      let cardBgClass = 'bg-[#0b101c]/45 border border-white/[0.04] hover:border-white/[0.08]';
+                      
+                      if (isFinished && userPrediction) {
+                        const earned = userPrediction.points_earned ?? 0;
+                        const isPlusOne = earned === 1;
+                        
+                        // Tính toán xem trận đấu có hòa kèo do chấp không
+                        const handicapTeam = match.handicap_team || 'none';
+                        const handicapVal = Number(match.handicap_value || 0);
+                        let isMatchDraw = false;
+                        if (match.home_score !== null && match.away_score !== null) {
+                          if (handicapTeam === 'none' || handicapVal === 0) {
+                            isMatchDraw = match.home_score === match.away_score;
+                          } else {
+                            let diff = 0;
+                            if (handicapTeam === 'home') {
+                              diff = (match.home_score - handicapVal) - match.away_score;
+                            } else if (handicapTeam === 'away') {
+                              diff = match.home_score - (match.away_score - handicapVal);
+                            }
+                            isMatchDraw = diff === 0;
+                          }
+                        }
+
+                        if (isPlusOne) {
+                          // Thắng kèo: nền xanh lục tối
+                          cardBgClass = 'bg-[#071f18]/85 border border-emerald-500/35 hover:border-emerald-500/55 shadow-[0_0_15px_-3px_rgba(16,185,129,0.15)]';
+                        } else if (isMatchDraw) {
+                          // Hòa kèo: nền xanh dương tối (sky)
+                          cardBgClass = 'bg-[#082138]/85 border border-sky-500/40 hover:border-sky-500/60 shadow-[0_0_15px_-3px_rgba(56,189,248,0.15)]';
+                        } else if (earned > 0) {
+                          // Thua kèo nhưng được cộng điểm: nền cam tối
+                          cardBgClass = 'bg-[#1a120c]/85 border border-amber-500/35 hover:border-amber-500/55 shadow-[0_0_15px_-3px_rgba(245,158,11,0.12)]';
+                        } else {
+                          // Thua kèo hoàn toàn 0đ: nền đỏ tối
+                          cardBgClass = 'bg-[#1f0d0d]/85 border border-red-500/35 hover:border-red-500/55 shadow-[0_0_15px_-3px_rgba(239,68,68,0.15)]';
+                        }
+                      } else if (!isFinished && userPrediction) {
+                        // Đã cược nhưng trận đấu chưa kết thúc (hoặc đang đá): nền tím indigo tối
+                        cardBgClass = 'bg-[#0e1324]/60 border border-indigo-500/35 hover:border-indigo-500/55 shadow-[0_0_15px_-3px_rgba(99,102,241,0.12)]';
+                      }
+
                       return (
                         <div
                           key={match.id}
@@ -347,7 +390,7 @@ export default function GroupStandingsClient({
                               handlePredictClick(match);
                             }
                           }}
-                          className={`flex flex-col gap-2 bg-[#0b101c]/45 border border-white/[0.04] hover:border-white/[0.08] rounded-2xl p-3 text-[11px] transition-all duration-200 ${isLoggedIn && !isLocked ? 'cursor-pointer hover:bg-white/[0.02] hover:border-primary/20' : ''
+                          className={`flex flex-col gap-2 rounded-2xl p-3 text-[11px] transition-all duration-200 ${cardBgClass} ${isLoggedIn && !isLocked ? 'cursor-pointer hover:bg-white/[0.02] hover:border-primary/20' : ''
                             }`}
                         >
                           {/* Row 1: Thời gian thi đấu & Badges cấu hình điểm */}
