@@ -56,24 +56,6 @@ const axiosInstance = axios.create({
 const CORSPROXY_KEY = process.env.CORSPROXY_KEY || 'ebfba0cb';
 
 /**
- * Hàm helper tự động fetch API từ worldcup26.ir, thử trực tiếp trước rồi qua các proxy dự phòng nếu thất bại.
- */
-async function fetchWorldCupIr(endpoint: string, timeout = 8000) {
-  const url = `https://worldcup26.ir/get/${endpoint}`;
-  try {
-    return await axiosInstance.get(url, { timeout });
-  } catch (err) {
-    console.warn(`Direct fetch ${endpoint} failed, trying proxy...`, err instanceof Error ? err.message : String(err));
-    try {
-      return await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=${encodeURIComponent(url)}`, { timeout });
-    } catch (proxyErr) {
-      console.warn(`corsproxy.io failed for ${endpoint}, trying allorigins...`, proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
-      return await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent(url), { timeout });
-    }
-  }
-}
-
-/**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
  */
 export async function syncMatchesHelper() {
@@ -84,13 +66,19 @@ export async function syncMatchesHelper() {
   try {
     console.log('Fetching matches from worldcup26.ir via Axios...');
 
-    // Fetch Teams và Games song song để tăng tốc độ gấp đôi
-    console.log('Fetching teams and games in parallel from worldcup26.ir...');
-    const [teamsResponse, gamesResponse] = await Promise.all([
-      fetchWorldCupIr('teams', 8000),
-      fetchWorldCupIr('games', 8000)
-    ]);
-
+    // 1. Fetch Teams for Flags mapping
+    let teamsResponse;
+    try {
+      teamsResponse = await axiosInstance.get('https://worldcup26.ir/get/teams', { timeout: 15000 });
+    } catch (err) {
+      console.warn('Direct fetch teams failed, trying proxy...', err instanceof Error ? err.message : String(err));
+      try {
+        teamsResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/teams`, { timeout: 15000 });
+      } catch (proxyErr) {
+        console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
+        teamsResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/teams'), { timeout: 15000 });
+      }
+    }
     let teamsData = teamsResponse.data;
     if (typeof teamsData === 'string') {
       try {
@@ -104,6 +92,20 @@ export async function syncMatchesHelper() {
     teamsList.forEach((t: { id: string; flag: string }) => {
       teamIdToFlagMap.set(t.id, t.flag);
     });
+
+    // 2. Fetch Games
+    let gamesResponse;
+    try {
+      gamesResponse = await axiosInstance.get('https://worldcup26.ir/get/games', { timeout: 15000 });
+    } catch (err) {
+      console.warn('Direct fetch games failed, trying proxy...', err instanceof Error ? err.message : String(err));
+      try {
+        gamesResponse = await axiosInstance.get(`https://corsproxy.io/?key=${CORSPROXY_KEY}&url=https://worldcup26.ir/get/games`, { timeout: 15000 });
+      } catch (proxyErr) {
+        console.warn('corsproxy.io failed, trying allorigins...', proxyErr instanceof Error ? proxyErr.message : String(proxyErr));
+        gamesResponse = await axiosInstance.get('https://api.allorigins.win/raw?url=' + encodeURIComponent('https://worldcup26.ir/get/games'), { timeout: 15000 });
+      }
+    }
 
     let gamesData = gamesResponse.data;
     if (typeof gamesData === 'string') {
