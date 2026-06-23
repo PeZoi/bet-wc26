@@ -103,6 +103,28 @@ export default function MatchesList({
     return () => window.removeEventListener('popstate', handlePopState);
   }, []);
 
+  // 3. Tự động giãn rộng container chính (<main>) ra hết chiều rộng màn hình khi ở chế độ cây thi đấu
+  useEffect(() => {
+    const mainEl = document.querySelector('main');
+    if (!mainEl) return;
+
+    if (viewMode === 'bracket') {
+      mainEl.style.maxWidth = '100%';
+      mainEl.style.paddingLeft = '1.5rem';
+      mainEl.style.paddingRight = '1.5rem';
+    } else {
+      mainEl.style.maxWidth = '';
+      mainEl.style.paddingLeft = '';
+      mainEl.style.paddingRight = '';
+    }
+
+    return () => {
+      mainEl.style.maxWidth = '';
+      mainEl.style.paddingLeft = '';
+      mainEl.style.paddingRight = '';
+    };
+  }, [viewMode]);
+
   // Modal State
   const [selectedMatch, setSelectedMatch] = useState<Match | null>(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -234,27 +256,51 @@ export default function MatchesList({
   const totalMatchesCount = matchesForStats.length;
   const playedMatchesCount = matchesForStats.filter(m => m.status === 'FT').length;
 
-  // Prepare tournament bracket data
-  const vong16 = initialMatches
-    .filter((m) => m.stage === 'Vòng 1/16')
-    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+  const findMatch = (id: number) => initialMatches.find(m => m.id === id) || null;
 
-  const tuKet = initialMatches
-    .filter((m) => m.stage === 'Tứ kết')
-    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+  // Vòng 1/32 (16 trận đấu xếp theo nhánh đấu để vẽ cây)
+  const vong32Slots = [
+    findMatch(74), findMatch(77), // -> Nối vào Vòng 1/16 ID 89
+    findMatch(73), findMatch(75), // -> Nối vào Vòng 1/16 ID 90
+    findMatch(83), findMatch(84), // -> Nối vào Vòng 1/16 ID 93
+    findMatch(81), findMatch(82), // -> Nối vào Vòng 1/16 ID 94
+    findMatch(76), findMatch(78), // -> Nối vào Vòng 1/16 ID 91
+    findMatch(79), findMatch(80), // -> Nối vào Vòng 1/16 ID 92
+    findMatch(86), findMatch(88), // -> Nối vào Vòng 1/16 ID 95
+    findMatch(85), findMatch(87), // -> Nối vào Vòng 1/16 ID 96
+  ];
 
-  const banKet = initialMatches
-    .filter((m) => m.stage === 'Bán kết')
-    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+  // Vòng 1/16 (8 trận đấu)
+  const vong16Slots = [
+    findMatch(89), // -> Nối với 90 vào Tứ kết ID 97
+    findMatch(90),
+    findMatch(93), // -> Nối với 94 vào Tứ kết ID 98
+    findMatch(94),
+    findMatch(91), // -> Nối với 92 vào Tứ kết ID 99
+    findMatch(92),
+    findMatch(95), // -> Nối với 96 vào Tứ kết ID 100
+    findMatch(96),
+  ];
 
-  const chungKet = initialMatches
-    .filter((m) => m.stage === 'Chung kết')
-    .sort((a, b) => new Date(a.match_time).getTime() - new Date(b.match_time).getTime());
+  // Tứ kết (4 trận đấu)
+  const tuKetSlots = [
+    findMatch(97), // -> Nối với 98 vào Bán kết ID 101
+    findMatch(98),
+    findMatch(99), // -> Nối với 100 vào Bán kết ID 102
+    findMatch(100),
+  ];
 
-  const vong16Slots = Array.from({ length: 8 }, (_, i) => vong16[i] || null);
-  const tuKetSlots = Array.from({ length: 4 }, (_, i) => tuKet[i] || null);
-  const banKetSlots = Array.from({ length: 2 }, (_, i) => banKet[i] || null);
-  const chungKetSlots = Array.from({ length: 2 }, (_, i) => chungKet[i] || null);
+  // Bán kết (2 trận đấu)
+  const banKetSlots = [
+    findMatch(101), // -> Nối vào Chung kết ID 104
+    findMatch(102),
+  ];
+
+  // Chung kết & Tranh hạng ba
+  const chungKetSlots = [
+    findMatch(104), // Chung kết
+    findMatch(103), // Tranh hạng ba
+  ];
 
   return (
     <div className="space-y-6">
@@ -424,76 +470,160 @@ export default function MatchesList({
       ) : (
         /* Bracket View Mode */
         <div className="glass-panel rounded-3xl border border-white/5 bg-white/[0.01] overflow-x-auto pb-6 pt-4 px-4 select-none">
-          <div className="min-w-[1150px] h-[1080px] flex items-center justify-center relative p-8">
+          <div className="min-w-[1500px] h-[2176px] flex items-center justify-center relative p-8">
             <div className="flex items-center gap-8">
               {/* Left Side Semifinals & Quarterfinals Tree */}
-              <div className="flex flex-col gap-[176px] relative">
+              <div className="flex flex-col gap-[192px] relative">
                 
                 {/* Semifinal Branch 1 */}
                 <div className="flex items-center">
-                  <div className="flex flex-col gap-[80px] relative pr-8 flex-shrink-0">
+                  <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
                     
                     {/* Quarterfinal 1 Branch */}
                     <div className="flex items-center">
-                      <div className="flex flex-col gap-4 relative pr-8 flex-shrink-0">
-                        <BracketCard match={vong16Slots[0]} userPrediction={vong16Slots[0] ? predictionMap.get(vong16Slots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng A" placeholderAway="Nhì bảng B" matchIndexInfo="Trận 1/16 (1)" />
-                        <BracketCard match={vong16Slots[1]} userPrediction={vong16Slots[1] ? predictionMap.get(vong16Slots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng C" placeholderAway="Nhì bảng D" matchIndexInfo="Trận 1/16 (2)" />
-                        <div className="absolute right-0 top-[40px] bottom-[40px] w-8 border-r border-y border-white/10 rounded-r" />
+                      <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
+                        
+                        {/* Block Vòng 1/16 (1) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[0]} userPrediction={vong32Slots[0] ? predictionMap.get(vong32Slots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Germany" placeholderAway="3rd Group A/B/C/D/F" matchIndexInfo="Trận 1/32 (1)" />
+                            <BracketCard match={vong32Slots[1]} userPrediction={vong32Slots[1] ? predictionMap.get(vong32Slots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group I" placeholderAway="3rd C/D/F/G/H" matchIndexInfo="Trận 1/32 (2)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[0]} userPrediction={vong16Slots[0] ? predictionMap.get(vong16Slots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 74" placeholderAway="Thắng Trận 77" matchIndexInfo="Trận 1/16 (1)" />
+                        </div>
+
+                        {/* Block Vòng 1/16 (2) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[2]} userPrediction={vong32Slots[2] ? predictionMap.get(vong32Slots[2].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Runner-up Group A" placeholderAway="Runner-up Group B" matchIndexInfo="Trận 1/32 (3)" />
+                            <BracketCard match={vong32Slots[3]} userPrediction={vong32Slots[3] ? predictionMap.get(vong32Slots[3].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group F" placeholderAway="Runner-up Group C" matchIndexInfo="Trận 1/32 (4)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[1]} userPrediction={vong16Slots[1] ? predictionMap.get(vong16Slots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 73" placeholderAway="Thắng Trận 75" matchIndexInfo="Trận 1/16 (2)" />
+                        </div>
+
+                        <div className="absolute right-0 top-[100px] bottom-[100px] w-8 border-r border-y border-white/10 rounded-r" />
                       </div>
                       <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                      <BracketCard match={tuKetSlots[0]} userPrediction={tuKetSlots[0] ? predictionMap.get(tuKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Trận 1" placeholderAway="Thắng Trận 2" matchIndexInfo="Tứ kết 1" />
+                      <BracketCard match={tuKetSlots[0]} userPrediction={tuKetSlots[0] ? predictionMap.get(tuKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 1/16 (1)" placeholderAway="Thắng Trận 1/16 (2)" matchIndexInfo="Tứ kết 1" />
                     </div>
 
                     {/* Quarterfinal 2 Branch */}
                     <div className="flex items-center">
-                      <div className="flex flex-col gap-4 relative pr-8 flex-shrink-0">
-                        <BracketCard match={vong16Slots[2]} userPrediction={vong16Slots[2] ? predictionMap.get(vong16Slots[2].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng E" placeholderAway="Nhì bảng F" matchIndexInfo="Trận 1/16 (3)" />
-                        <BracketCard match={vong16Slots[3]} userPrediction={vong16Slots[3] ? predictionMap.get(vong16Slots[3].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng G" placeholderAway="Nhì bảng H" matchIndexInfo="Trận 1/16 (4)" />
-                        <div className="absolute right-0 top-[40px] bottom-[40px] w-8 border-r border-y border-white/10 rounded-r" />
+                      <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
+                        
+                        {/* Block Vòng 1/16 (3) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[4]} userPrediction={vong32Slots[4] ? predictionMap.get(vong32Slots[4].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Runner-up Group K" placeholderAway="Runner-up Group L" matchIndexInfo="Trận 1/32 (5)" />
+                            <BracketCard match={vong32Slots[5]} userPrediction={vong32Slots[5] ? predictionMap.get(vong32Slots[5].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group H" placeholderAway="Runner-up Group J" matchIndexInfo="Trận 1/32 (6)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[2]} userPrediction={vong16Slots[2] ? predictionMap.get(vong16Slots[2].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 83" placeholderAway="Thắng Trận 84" matchIndexInfo="Trận 1/16 (3)" />
+                        </div>
+
+                        {/* Block Vòng 1/16 (4) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[6]} userPrediction={vong32Slots[6] ? predictionMap.get(vong32Slots[6].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="United States" placeholderAway="3rd B/E/F/I/J" matchIndexInfo="Trận 1/32 (7)" />
+                            <BracketCard match={vong32Slots[7]} userPrediction={vong32Slots[7] ? predictionMap.get(vong32Slots[7].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group G" placeholderAway="3rd A/E/H/I/J" matchIndexInfo="Trận 1/32 (8)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[3]} userPrediction={vong16Slots[3] ? predictionMap.get(vong16Slots[3].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 81" placeholderAway="Thắng Trận 82" matchIndexInfo="Trận 1/16 (4)" />
+                        </div>
+
+                        <div className="absolute right-0 top-[100px] bottom-[100px] w-8 border-r border-y border-white/10 rounded-r" />
                       </div>
                       <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                      <BracketCard match={tuKetSlots[1]} userPrediction={tuKetSlots[1] ? predictionMap.get(tuKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Trận 3" placeholderAway="Thắng Trận 4" matchIndexInfo="Tứ kết 2" />
+                      <BracketCard match={tuKetSlots[1]} userPrediction={tuKetSlots[1] ? predictionMap.get(tuKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 1/16 (3)" placeholderAway="Thắng Trận 1/16 (4)" matchIndexInfo="Tứ kết 2" />
                     </div>
 
-                    <div className="absolute right-0 top-[88px] bottom-[88px] w-8 border-r border-y border-white/10 rounded-r" />
+                    <div className="absolute right-0 top-[224px] bottom-[224px] w-8 border-r border-y border-white/10 rounded-r" />
                   </div>
                   <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                  <BracketCard match={banKetSlots[0]} userPrediction={banKetSlots[0] ? predictionMap.get(banKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Tứ kết 1" placeholderAway="Thắng Tứ kết 2" matchIndexInfo="Bán kết 1" />
+                  <BracketCard match={banKetSlots[0]} userPrediction={banKetSlots[0] ? predictionMap.get(banKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Tứ kết 1" placeholderAway="Thắng Tứ kết 2" matchIndexInfo="Bán kết 1" />
                 </div>
 
                 {/* Semifinal Branch 2 */}
                 <div className="flex items-center">
-                  <div className="flex flex-col gap-[80px] relative pr-8 flex-shrink-0">
+                  <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
                     
                     {/* Quarterfinal 3 Branch */}
                     <div className="flex items-center">
-                      <div className="flex flex-col gap-4 relative pr-8 flex-shrink-0">
-                        <BracketCard match={vong16Slots[4]} userPrediction={vong16Slots[4] ? predictionMap.get(vong16Slots[4].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng I" placeholderAway="Nhì bảng J" matchIndexInfo="Trận 1/16 (5)" />
-                        <BracketCard match={vong16Slots[5]} userPrediction={vong16Slots[5] ? predictionMap.get(vong16Slots[5].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng K" placeholderAway="Nhì bảng L" matchIndexInfo="Trận 1/16 (6)" />
-                        <div className="absolute right-0 top-[40px] bottom-[40px] w-8 border-r border-y border-white/10 rounded-r" />
+                      <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
+                        
+                        {/* Block Vòng 1/16 (5) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[8]} userPrediction={vong32Slots[8] ? predictionMap.get(vong32Slots[8].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group C" placeholderAway="Runner-up Group F" matchIndexInfo="Trận 1/32 (9)" />
+                            <BracketCard match={vong32Slots[9]} userPrediction={vong32Slots[9] ? predictionMap.get(vong32Slots[9].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Runner-up Group E" placeholderAway="Runner-up Group I" matchIndexInfo="Trận 1/32 (10)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[4]} userPrediction={vong16Slots[4] ? predictionMap.get(vong16Slots[4].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 76" placeholderAway="Thắng Trận 78" matchIndexInfo="Trận 1/16 (5)" />
+                        </div>
+
+                        {/* Block Vòng 1/16 (6) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[10]} userPrediction={vong32Slots[10] ? predictionMap.get(vong32Slots[10].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Mexico" placeholderAway="3rd C/E/F/H/I" matchIndexInfo="Trận 1/32 (11)" />
+                            <BracketCard match={vong32Slots[11]} userPrediction={vong32Slots[11] ? predictionMap.get(vong32Slots[11].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group L" placeholderAway="3rd E/H/I/J/K" matchIndexInfo="Trận 1/32 (12)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[5]} userPrediction={vong16Slots[5] ? predictionMap.get(vong16Slots[5].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 79" placeholderAway="Thắng Trận 80" matchIndexInfo="Trận 1/16 (6)" />
+                        </div>
+
+                        <div className="absolute right-0 top-[100px] bottom-[100px] w-8 border-r border-y border-white/10 rounded-r" />
                       </div>
                       <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                      <BracketCard match={tuKetSlots[2]} userPrediction={tuKetSlots[2] ? predictionMap.get(tuKetSlots[2].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Trận 5" placeholderAway="Thắng Trận 6" matchIndexInfo="Tứ kết 3" />
+                      <BracketCard match={tuKetSlots[2]} userPrediction={tuKetSlots[2] ? predictionMap.get(tuKetSlots[2].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 1/16 (5)" placeholderAway="Thắng Trận 1/16 (6)" matchIndexInfo="Tứ kết 3" />
                     </div>
 
                     {/* Quarterfinal 4 Branch */}
                     <div className="flex items-center">
-                      <div className="flex flex-col gap-4 relative pr-8 flex-shrink-0">
-                        <BracketCard match={vong16Slots[6]} userPrediction={vong16Slots[6] ? predictionMap.get(vong16Slots[6].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng A" placeholderAway="Nhì bảng C" matchIndexInfo="Trận 1/16 (7)" />
-                        <BracketCard match={vong16Slots[7]} userPrediction={vong16Slots[7] ? predictionMap.get(vong16Slots[7].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Nhất bảng B" placeholderAway="Nhì bảng D" matchIndexInfo="Trận 1/16 (8)" />
-                        <div className="absolute right-0 top-[40px] bottom-[40px] w-8 border-r border-y border-white/10 rounded-r" />
+                      <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
+                        
+                        {/* Block Vòng 1/16 (7) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[12]} userPrediction={vong32Slots[12] ? predictionMap.get(vong32Slots[12].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group J" placeholderAway="Runner-up Group H" matchIndexInfo="Trận 1/32 (13)" />
+                            <BracketCard match={vong32Slots[13]} userPrediction={vong32Slots[13] ? predictionMap.get(vong32Slots[13].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Runner-up Group D" placeholderAway="Runner-up Group G" matchIndexInfo="Trận 1/32 (14)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[6]} userPrediction={vong16Slots[6] ? predictionMap.get(vong16Slots[6].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 86" placeholderAway="Thắng Trận 88" matchIndexInfo="Trận 1/16 (7)" />
+                        </div>
+
+                        {/* Block Vòng 1/16 (8) */}
+                        <div className="flex items-center">
+                          <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
+                            <BracketCard match={vong32Slots[14]} userPrediction={vong32Slots[14] ? predictionMap.get(vong32Slots[14].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group B" placeholderAway="3rd E/F/G/I/J" matchIndexInfo="Trận 1/32 (15)" />
+                            <BracketCard match={vong32Slots[15]} userPrediction={vong32Slots[15] ? predictionMap.get(vong32Slots[15].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Winner Group K" placeholderAway="3rd D/E/I/J/L" matchIndexInfo="Trận 1/32 (16)" />
+                            <div className="absolute right-0 top-[48px] bottom-[48px] w-8 border-r border-y border-white/10 rounded-r" />
+                          </div>
+                          <div className="w-8 h-px bg-white/10 flex-shrink-0" />
+                          <BracketCard match={vong16Slots[7]} userPrediction={vong16Slots[7] ? predictionMap.get(vong16Slots[7].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 85" placeholderAway="Thắng Trận 87" matchIndexInfo="Trận 1/16 (8)" />
+                        </div>
+
+                        <div className="absolute right-0 top-[100px] bottom-[100px] w-8 border-r border-y border-white/10 rounded-r" />
                       </div>
                       <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                      <BracketCard match={tuKetSlots[3]} userPrediction={tuKetSlots[3] ? predictionMap.get(tuKetSlots[3].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Trận 7" placeholderAway="Thắng Trận 8" matchIndexInfo="Tứ kết 4" />
+                      <BracketCard match={tuKetSlots[3]} userPrediction={tuKetSlots[3] ? predictionMap.get(tuKetSlots[3].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Trận 1/16 (7)" placeholderAway="Thắng Trận 1/16 (8)" matchIndexInfo="Tứ kết 4" />
                     </div>
 
-                    <div className="absolute right-0 top-[88px] bottom-[88px] w-8 border-r border-y border-white/10 rounded-r" />
+                    <div className="absolute right-0 top-[224px] bottom-[224px] w-8 border-r border-y border-white/10 rounded-r" />
                   </div>
                   <div className="w-8 h-px bg-white/10 flex-shrink-0" />
-                  <BracketCard match={banKetSlots[1]} userPrediction={banKetSlots[1] ? predictionMap.get(banKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Tứ kết 3" placeholderAway="Thắng Tứ kết 4" matchIndexInfo="Bán kết 2" />
+                  <BracketCard match={banKetSlots[1]} userPrediction={banKetSlots[1] ? predictionMap.get(banKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Tứ kết 3" placeholderAway="Thắng Tứ kết 4" matchIndexInfo="Bán kết 2" />
                 </div>
 
-                <div className="absolute right-0 top-[216px] bottom-[216px] w-8 border-r border-y border-white/10 rounded-r" />
+                <div className="absolute right-0 top-[496px] bottom-[496px] w-8 border-r border-y border-white/10 rounded-r" />
               </div>
 
               <div className="w-8 h-px bg-white/10 flex-shrink-0" />
@@ -502,12 +632,12 @@ export default function MatchesList({
               <div className="flex flex-col gap-16 ml-4 flex-shrink-0">
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-yellow-500 uppercase tracking-wider block text-center">🏆 Chung kết</span>
-                  <BracketCard match={chungKetSlots[0]} userPrediction={chungKetSlots[0] ? predictionMap.get(chungKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thắng Bán kết 1" placeholderAway="Thắng Bán kết 2" matchIndexInfo="Chung kết" />
+                  <BracketCard match={chungKetSlots[0]} userPrediction={chungKetSlots[0] ? predictionMap.get(chungKetSlots[0].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thắng Bán kết 1" placeholderAway="Thắng Bán kết 2" matchIndexInfo="Chung kết" />
                 </div>
 
                 <div className="space-y-2">
                   <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-wider block text-center">🥉 Tranh hạng ba</span>
-                  <BracketCard match={chungKetSlots[1]} userPrediction={chungKetSlots[1] ? predictionMap.get(chungKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} placeholderHome="Thua Bán kết 1" placeholderAway="Thua Bán kết 2" matchIndexInfo="Tranh hạng ba" />
+                  <BracketCard match={chungKetSlots[1]} userPrediction={chungKetSlots[1] ? predictionMap.get(chungKetSlots[1].id) : undefined} onPredictClick={handlePredictClick} isLoggedIn={isLoggedIn} isAdmin={isAdmin} placeholderHome="Thua Bán kết 1" placeholderAway="Thua Bán kết 2" matchIndexInfo="Tranh hạng ba" />
                 </div>
               </div>
 
