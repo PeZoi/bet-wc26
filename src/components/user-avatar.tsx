@@ -55,7 +55,10 @@ export default function UserAvatar({ src, displayName, className = "h-8 w-8" }: 
 
   // Chờ component mounted để tránh lỗi hydration Next.js làm mất sự kiện onError của thẻ img
   useEffect(() => {
-    setMounted(true);
+    const timer = setTimeout(() => {
+      setMounted(true);
+    }, 0);
+    return () => clearTimeout(timer);
   }, []);
 
   const initials = getInitials(name);

@@ -62,6 +62,12 @@ export default function Navbar() {
 		
 		fetchUserData();
 
+		// Lắng nghe sự kiện để cập nhật lại dữ liệu profile khi điểm số thay đổi
+		const handleSyncSuccess = () => {
+			fetchUserData();
+		};
+		window.addEventListener('sync-scores-success', handleSyncSuccess);
+
 		const {
 			data: { subscription },
 		} = supabase.auth.onAuthStateChange(async (_event, session) => {
@@ -87,6 +93,7 @@ export default function Navbar() {
 
 		return () => {
 			subscription.unsubscribe();
+			window.removeEventListener('sync-scores-success', handleSyncSuccess);
 		};
 	}, [supabase]);
 

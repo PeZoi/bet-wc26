@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Match, Prediction } from '@/types';
+import { Match, Prediction, Profile } from '@/types';
+import { createClient } from '@/lib/supabase/client';
 import MatchCard from '@/components/match-card';
 import BracketCard from '@/components/bracket-card';
 import PredictionModal from '@/components/prediction-modal';
@@ -44,6 +45,32 @@ export default function MatchesList({
 
   const predictions = initialPredictions;
   const [isSyncing, setIsSyncing] = useState(false);
+  const supabase = createClient();
+  const [user, setUser] = useState<any>(null);
+  const [, setProfile] = useState<Profile | null>(null);
+
+  // Tải thông tin user hiện tại nếu đã đăng nhập để phục vụ việc cập nhật profile sau khi đồng bộ
+  useEffect(() => {
+    async function fetchUserData() {
+      try {
+        const { data: { user: currentUser } } = await supabase.auth.getUser();
+        setUser(currentUser);
+        if (currentUser) {
+          const { data: profileData } = await supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', currentUser.id)
+            .single();
+          setProfile(profileData as Profile);
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải thông tin user trong MatchesList:', error);
+      }
+    }
+    if (isLoggedIn) {
+      fetchUserData();
+    }
+  }, [supabase, isLoggedIn]);
 
   // Hàm cập nhật URL ngoại tuyến (client-side only) bằng history.replaceState
   // Điều này giúp tránh độ trễ do server-side navigation của Next.js router.
@@ -53,10 +80,10 @@ export default function MatchesList({
     if (stage !== 'all') params.set('stage', stage);
     if (status !== 'all') params.set('status', status);
     if (view !== 'list') params.set('view', view);
-    
+
     const newQuery = params.toString();
     const newUrl = newQuery ? `${pathname}?${newQuery}` : pathname;
-    
+
     window.history.replaceState(null, '', newUrl);
   };
 
@@ -91,10 +118,10 @@ export default function MatchesList({
       const params = new URLSearchParams(window.location.search);
       setSearchTerm(params.get('search') || '');
       setSelectedStage(params.get('stage') || 'all');
-      
+
       const status = params.get('status') || 'all';
       setStatusFilter((status === 'finished' || status === 'upcoming') ? status : 'all');
-      
+
       const view = params.get('view') || 'list';
       setViewMode(view === 'bracket' ? 'bracket' : 'list');
     };
@@ -151,19 +178,37 @@ export default function MatchesList({
   };
 
   const handleSyncScores = async () => {
+    if (isSyncing) return;
     setIsSyncing(true);
     try {
-      const res = await fetch('/api/sync-scores');
+      const res = await fetch("/api/sync-scores?wait=true");
       const data = (await res.json()) as { success: boolean; message?: string };
       if (data.success) {
-        await showAlert('Cập nhật tỉ số thành công!', { type: 'success', title: 'Thành công' });
         router.refresh();
+
+        // Cập nhật lại profile sau khi điểm số thay đổi (cho MatchesList)
+        if (user) {
+          const { data: profileData } = await supabase
+            .from("profiles")
+            .select("*")
+            .eq("id", user.id)
+            .single();
+          if (profileData) {
+            setProfile(profileData as Profile);
+          }
+        }
+
+        // Phát sự kiện toàn cục để Navbar cũng tự động cập nhật lại profile/điểm số
+        window.dispatchEvent(new Event('sync-scores-success'));
+
+        await showAlert("Cập nhật tỉ số thực tế thành công!", { type: "success", title: "Thành công" });
       } else {
-        await showAlert('Cập nhật thất bại: ' + data.message, { type: 'error', title: 'Thất bại' });
+        await showAlert("Cập nhật tỉ số thất bại: " + data.message, { type: "error", title: "Thất bại" });
       }
-    } catch (e: unknown) {
-      const errMsg = e instanceof Error ? e.message : 'Đã xảy ra lỗi';
-      await showAlert('Lỗi: ' + errMsg, { type: 'error', title: 'Lỗi' });
+    } catch (error: unknown) {
+      console.error("Lỗi đồng bộ tỉ số:", error);
+      const errMsg = error instanceof Error ? error.message : "Có lỗi xảy ra khi cập nhật tỉ số.";
+      await showAlert("Lỗi: " + errMsg, { type: "error", title: "Lỗi" });
     } finally {
       setIsSyncing(false);
     }
@@ -215,10 +260,10 @@ export default function MatchesList({
 
     // Check if opponents are fully determined (not placeholders like TBD, Winner, Runner-up, etc.)
     const skipKeywords = ['tbd', 'winner', 'runner-up', 'loser', '3rd', 'thắng trận', 'thua trận', 'nhất bảng', 'nhì bảng', 'hạng ba', 'group'];
-    const isHomePlaceholder = skipKeywords.some(keyword => 
+    const isHomePlaceholder = skipKeywords.some(keyword =>
       match.home_team.toLowerCase().includes(keyword)
     );
-    const isAwayPlaceholder = skipKeywords.some(keyword => 
+    const isAwayPlaceholder = skipKeywords.some(keyword =>
       match.away_team.toLowerCase().includes(keyword)
     );
     const opponentsDetermined = !isHomePlaceholder && !isAwayPlaceholder && match.home_team.trim() !== '' && match.away_team.trim() !== '';
@@ -345,22 +390,20 @@ export default function MatchesList({
             <div className="flex items-center bg-white/5 border border-white/10 rounded-xl p-1 w-full sm:w-auto justify-center">
               <button
                 onClick={() => handleViewChange('list')}
-                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
-                  viewMode === 'list'
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${viewMode === 'list'
+                  ? 'bg-primary text-primary-foreground shadow'
+                  : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <Grid className="h-3.5 w-3.5" />
                 Danh sách
               </button>
               <button
                 onClick={() => handleViewChange('bracket')}
-                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${
-                  viewMode === 'bracket'
-                    ? 'bg-primary text-primary-foreground shadow'
-                    : 'text-muted-foreground hover:text-foreground'
-                }`}
+                className={`flex items-center justify-center gap-1.5 px-4 py-2 rounded-lg text-xs font-bold transition-all cursor-pointer flex-1 sm:flex-initial ${viewMode === 'bracket'
+                  ? 'bg-primary text-primary-foreground shadow'
+                  : 'text-muted-foreground hover:text-foreground'
+                  }`}
               >
                 <GitFork className="h-3.5 w-3.5" />
                 Cây thi đấu
@@ -400,11 +443,10 @@ export default function MatchesList({
                   <button
                     key={statusOpt.value}
                     onClick={() => handleStatusChange(statusOpt.value as 'all' | 'finished' | 'upcoming')}
-                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
-                      statusFilter === statusOpt.value
-                        ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-primary/20 shadow-md shadow-primary/10'
-                        : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
-                    }`}
+                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${statusFilter === statusOpt.value
+                      ? 'bg-gradient-to-r from-primary to-primary/80 text-primary-foreground border-primary/20 shadow-md shadow-primary/10'
+                      : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
+                      }`}
                   >
                     {statusOpt.label}
                   </button>
@@ -418,18 +460,17 @@ export default function MatchesList({
                 <Filter className="h-3.5 w-3.5 text-muted-foreground" />
                 <span>Vòng đấu:</span>
               </div>
-              
+
               {/* Scrollable container on mobile, wrapped on larger screens */}
               <div className="flex flex-wrap gap-1.5 overflow-x-auto pb-1 md:pb-0 scrollbar-none">
                 {stages.map((stage) => (
                   <button
                     key={stage.value}
                     onClick={() => handleStageChange(stage.value)}
-                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${
-                      selectedStage === stage.value
-                        ? 'bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5'
-                        : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
-                    }`}
+                    className={`text-xs font-bold py-1.5 px-3.5 rounded-xl border transition-all cursor-pointer whitespace-nowrap ${selectedStage === stage.value
+                      ? 'bg-primary/10 text-primary border-primary/20 shadow-sm shadow-primary/5'
+                      : 'bg-[#181b25]/60 text-muted-foreground border-white/5 hover:text-foreground hover:bg-white/10'
+                      }`}
                   >
                     {stage.label}
                   </button>
@@ -474,15 +515,15 @@ export default function MatchesList({
             <div className="flex items-center gap-8">
               {/* Left Side Semifinals & Quarterfinals Tree */}
               <div className="flex flex-col gap-[192px] relative">
-                
+
                 {/* Semifinal Branch 1 */}
                 <div className="flex items-center">
                   <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                    
+
                     {/* Quarterfinal 1 Branch */}
                     <div className="flex items-center">
                       <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                        
+
                         {/* Block Vòng 1/16 (1) */}
                         <div className="flex items-center">
                           <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
@@ -514,7 +555,7 @@ export default function MatchesList({
                     {/* Quarterfinal 2 Branch */}
                     <div className="flex items-center">
                       <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                        
+
                         {/* Block Vòng 1/16 (3) */}
                         <div className="flex items-center">
                           <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
@@ -552,11 +593,11 @@ export default function MatchesList({
                 {/* Semifinal Branch 2 */}
                 <div className="flex items-center">
                   <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                    
+
                     {/* Quarterfinal 3 Branch */}
                     <div className="flex items-center">
                       <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                        
+
                         {/* Block Vòng 1/16 (5) */}
                         <div className="flex items-center">
                           <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
@@ -588,7 +629,7 @@ export default function MatchesList({
                     {/* Quarterfinal 4 Branch */}
                     <div className="flex items-center">
                       <div className="flex flex-col gap-12 relative pr-8 flex-shrink-0">
-                        
+
                         {/* Block Vòng 1/16 (7) */}
                         <div className="flex items-center">
                           <div className="flex flex-col gap-2 relative pr-8 flex-shrink-0">
