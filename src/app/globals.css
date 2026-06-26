@@ -92,3 +92,40 @@ body {
 .animate-fade-in {
   animation: fadeIn 0.25s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* Bracket View Connector Lines */
+.connector-r16-qf-all-v32 {
+  top: 116px;
+  bottom: 116px;
+}
+.connector-r16-qf-v16 {
+  top: 56px;
+  bottom: 56px;
+}
+
+.connector-qf-sf-all {
+  top: 256px;
+  bottom: 256px;
+}
+.connector-qf-sf-v16 {
+  top: 116px;
+  bottom: 116px;
+}
+.connector-qf-sf-tuket {
+  top: 56px;
+  bottom: 56px;
+}
+
+.connector-sf-final-all {
+  top: 536px;
+  bottom: 536px;
+}
+.connector-sf-final-tuket {
+  top: 116px;
+  bottom: 116px;
+}
+.connector-sf-final-banket {
+  top: 56px;
+  bottom: 56px;
+}
+

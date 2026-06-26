@@ -7,7 +7,25 @@ import { User } from "@supabase/supabase-js";
 
 export const dynamic = "force-dynamic";
 
-export default async function MatchesPage() {
+interface PageProps {
+	searchParams: Promise<{ [key: string]: string | string[] | undefined }>;
+}
+
+export default async function MatchesPage({ searchParams }: PageProps) {
+	const resolvedSearchParams = await searchParams;
+
+	const statusParam = resolvedSearchParams.status;
+	const viewParam = resolvedSearchParams.view;
+
+	const initialFilters = {
+		search: typeof resolvedSearchParams.search === 'string' ? resolvedSearchParams.search : '',
+		stage: typeof resolvedSearchParams.stage === 'string' ? resolvedSearchParams.stage : 'all',
+		status: (statusParam === 'finished' || statusParam === 'upcoming')
+			? (statusParam as 'finished' | 'upcoming')
+			: 'all' as const,
+		view: (viewParam === 'bracket' ? 'bracket' : 'list') as 'list' | 'bracket'
+	};
+
 	let matches: Match[] = [];
 	let predictions: Prediction[] = [];
 	let allPredictions: any[] = [];
@@ -78,6 +96,7 @@ export default async function MatchesPage() {
 						allPredictions={allPredictions}
 						isLoggedIn={isLoggedIn}
 						isAdmin={isAdmin}
+						initialFilters={initialFilters}
 					/>
 				</Suspense>
 			</main>
