@@ -95,37 +95,37 @@ body {
 
 /* Bracket View Connector Lines */
 .connector-r16-qf-all-v32 {
-  top: 116px;
-  bottom: 116px;
+  top: 124px;
+  bottom: 124px;
 }
 .connector-r16-qf-v16 {
-  top: 56px;
-  bottom: 56px;
+  top: 60px;
+  bottom: 60px;
 }
 
 .connector-qf-sf-all {
-  top: 256px;
-  bottom: 256px;
+  top: 272px;
+  bottom: 272px;
 }
 .connector-qf-sf-v16 {
-  top: 116px;
-  bottom: 116px;
+  top: 124px;
+  bottom: 124px;
 }
 .connector-qf-sf-tuket {
-  top: 56px;
-  bottom: 56px;
+  top: 60px;
+  bottom: 60px;
 }
 
 .connector-sf-final-all {
-  top: 536px;
-  bottom: 536px;
+  top: 568px;
+  bottom: 568px;
 }
 .connector-sf-final-tuket {
-  top: 116px;
-  bottom: 116px;
+  top: 124px;
+  bottom: 124px;
 }
 .connector-sf-final-banket {
-  top: 56px;
-  bottom: 56px;
+  top: 60px;
+  bottom: 60px;
 }
 

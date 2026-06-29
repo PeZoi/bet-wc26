@@ -236,18 +236,46 @@ export default function BracketCard({
     }
   };
 
+  // Xác định class động cho container dựa trên kết quả dự đoán của người chơi (đồng bộ với MatchCard)
+  let cardStatusClass = 'bg-[#131622]/60 border-white/[0.04]';
+  const canPredict = match && !isLocked && isLoggedIn && onPredictClick;
+
+  if (canPredict) {
+    cardStatusClass = 'bg-[#131622]/60 border-white/[0.06] hover:bg-[#181d2e]/85 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer active:scale-[0.98]';
+  }
+
+  if (match) {
+    if (match.status === 'FT') {
+      if (userPrediction) {
+        if (userPrediction.points_earned === 1) {
+          // Đoán đúng: Nền xanh lá tối đậm đà, viền xanh lá nổi bật
+          cardStatusClass = 'bg-[#071f18]/95 border-emerald-500/40 hover:border-emerald-500/60 shadow-[0_0_25px_-5px_rgba(16,185,129,0.15)]';
+        } else if (isDraw) {
+          // Trận hoà: Nền xanh sky tối, viền sky nổi bật
+          cardStatusClass = 'bg-[#082138]/95 border-sky-500/45 hover:border-sky-500/65 shadow-[0_0_25px_-5px_rgba(56,189,248,0.18)]';
+        } else {
+          // Đoán sai: Nền đỏ tối đậm đà, viền đỏ nổi bật
+          cardStatusClass = 'bg-[#1f0d0d]/95 border-red-500/40 hover:border-red-500/60 shadow-[0_0_25px_-5px_rgba(239,68,68,0.15)]';
+        }
+      }
+    } else if (match.status === 'NS') {
+      if (userPrediction) {
+        // Đã đoán nhưng chưa đá: Nền indigo tối, viền indigo nổi bật
+        cardStatusClass = `bg-[#0e1324]/95 border-indigo-500/45 hover:border-indigo-500/65 shadow-[0_0_25px_-5px_rgba(99,102,241,0.12)] ${
+          canPredict ? 'cursor-pointer active:scale-[0.98]' : ''
+        }`;
+      }
+    }
+  }
+
   return (
     <div
       id={id}
       onClick={handleCardClick}
-      className={`w-[260px] h-[120px] bg-[#131622]/60 backdrop-blur-md border rounded-xl p-3.5 transition-all duration-300 text-left flex flex-col justify-between select-none relative group ${
-        match && !isLocked && isLoggedIn && onPredictClick
-          ? 'border-white/[0.06] hover:bg-[#181d2e]/85 hover:border-primary/30 hover:shadow-lg hover:shadow-primary/5 cursor-pointer active:scale-[0.98]'
-          : 'border-white/[0.04]'
-      }`}
+      className={`w-[260px] h-[120px] max-h-[120px] overflow-hidden backdrop-blur-md border rounded-xl p-2.5 transition-all duration-300 text-left flex flex-col justify-between select-none relative group ${cardStatusClass}`}
     >
       {/* Mini info overlay */}
-      <div className="flex items-center justify-between text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider mb-1.5 border-b border-white/5 pb-1">
+      <div className="flex items-center justify-between text-[10.5px] font-bold text-muted-foreground uppercase tracking-wider mb-1 border-b border-white/5 pb-0.5">
         <span>{matchIndexInfo || (match ? match.stage : 'Knockout')}</span>
         {match && (
           <span className={match.status === 'LIVE' ? 'text-red-500 animate-pulse font-bold' : ''}>
@@ -265,7 +293,7 @@ export default function BracketCard({
         )}
       </div>
 
-      <div className="space-y-1.5 flex-1 flex flex-col justify-center">
+      <div className="space-y-1 flex-1 flex flex-col justify-center">
         {/* Home Row */}
         <div className="flex items-center justify-between gap-3">
           <div className="flex items-center gap-2 min-w-0 flex-1">
@@ -355,7 +383,7 @@ export default function BracketCard({
 
       {/* Prediction indicator / button */}
       {match && (
-        <div className="mt-1.5 pt-1.5 border-t border-white/[0.03] flex items-center justify-between min-h-[18px] gap-2">
+        <div className="mt-1 pt-1 border-t border-white/[0.03] flex items-center justify-between min-h-[18px] gap-2">
           <div className="flex items-center justify-between w-full min-w-0">
             {userPrediction ? (
               <div className="flex items-center justify-between w-full min-w-0">
