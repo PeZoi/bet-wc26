@@ -28,6 +28,8 @@ export interface Match {
   draw_points?: number;
   home_scorers?: string | null;
   away_scorers?: string | null;
+  home_penalty_score?: number | null;
+  away_penalty_score?: number | null;
 }
 
 export interface Prediction {

@@ -178,6 +178,8 @@ export async function syncMatchesHelper() {
       away_team_label?: string;
       home_scorers?: string | null;
       away_scorers?: string | null;
+      home_penalty_score?: string | null;
+      away_penalty_score?: string | null;
     }) => {
       const id = parseInt(game.id, 10);
       const isFinished = game.finished === 'TRUE';
@@ -211,6 +213,12 @@ export async function syncMatchesHelper() {
         away_logo = away_logo.replace('/w80/', '/w160/');
       }
 
+      const parsePenalty = (val: string | null | undefined): number | null => {
+        if (!val || val === 'null') return null;
+        const parsed = parseInt(val, 10);
+        return isNaN(parsed) ? null : parsed;
+      };
+
       return {
         id,
         home_team,
@@ -224,6 +232,8 @@ export async function syncMatchesHelper() {
         status,
         home_scorers: game.home_scorers || null,
         away_scorers: game.away_scorers || null,
+        home_penalty_score: parsePenalty(game.home_penalty_score),
+        away_penalty_score: parsePenalty(game.away_penalty_score),
         updated_at: new Date().toISOString()
       };
     });

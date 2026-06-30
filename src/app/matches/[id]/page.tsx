@@ -199,6 +199,11 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                         <span className="text-muted-foreground font-sans text-3xl font-light">:</span>
                         <span>{match.away_score ?? 0}</span>
                       </div>
+                      {match.home_penalty_score !== null && match.away_penalty_score !== null && (
+                        <span className="inline-flex items-center text-xs sm:text-sm font-black text-amber-400 bg-amber-500/10 border border-amber-500/20 px-3.5 py-1 rounded-full uppercase tracking-wider select-none">
+                          Pen: {match.home_penalty_score} - {match.away_penalty_score}
+                        </span>
+                      )}
                       {match.status === 'LIVE' ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-2.5 py-0.5 rounded-full animate-pulse uppercase tracking-wider">
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500" />

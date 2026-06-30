@@ -223,12 +223,29 @@ export default function BracketCard({
 
   const isFinished = match?.status === 'FT';
 
-  // Determine winner for highlights
+  // Determine winner for highlights (taking penalty score into account for knockout draws)
   const homeScore = match?.home_score ?? null;
   const awayScore = match?.away_score ?? null;
+  const homePenalty = match?.home_penalty_score ?? null;
+  const awayPenalty = match?.away_penalty_score ?? null;
   const hasResult = homeScore !== null && awayScore !== null;
-  const homeWinner = hasResult && homeScore > awayScore;
-  const awayWinner = hasResult && awayScore > homeScore;
+  
+  let homeWinner = false;
+  let awayWinner = false;
+  
+  if (hasResult) {
+    if (homeScore > awayScore) {
+      homeWinner = true;
+    } else if (awayScore > homeScore) {
+      awayWinner = true;
+    } else if (homePenalty !== null && awayPenalty !== null) {
+      if (homePenalty > awayPenalty) {
+        homeWinner = true;
+      } else if (awayPenalty > homePenalty) {
+        awayWinner = true;
+      }
+    }
+  }
 
   const handleCardClick = () => {
     if (match && !isLocked && isLoggedIn && onPredictClick) {
@@ -325,13 +342,18 @@ export default function BracketCard({
                 </span>
               )}
               {homeScore !== null && (
-                <span
-                  className={`font-mono text-sm min-w-[12px] text-right ${
-                    isFinished ? (homeWinner ? 'font-bold text-primary' : 'text-white/40') : 'text-white'
-                  }`}
-                >
-                  {homeScore}
-                </span>
+                <div className="flex items-center gap-1 font-mono text-sm min-w-[12px] text-right">
+                  <span
+                    className={isFinished ? (homeWinner ? 'font-bold text-primary' : 'text-white/40') : 'text-white'}
+                  >
+                    {homeScore}
+                  </span>
+                  {homePenalty !== null && (
+                    <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/25 px-1 rounded select-none">
+                      ({homePenalty})
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}
@@ -368,13 +390,18 @@ export default function BracketCard({
                 </span>
               )}
               {awayScore !== null && (
-                <span
-                  className={`font-mono text-sm min-w-[12px] text-right ${
-                    isFinished ? (awayWinner ? 'font-bold text-primary' : 'text-white/40') : 'text-white'
-                  }`}
-                >
-                  {awayScore}
-                </span>
+                <div className="flex items-center gap-1 font-mono text-sm min-w-[12px] text-right">
+                  <span
+                    className={isFinished ? (awayWinner ? 'font-bold text-primary' : 'text-white/40') : 'text-white'}
+                  >
+                    {awayScore}
+                  </span>
+                  {awayPenalty !== null && (
+                    <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/25 px-1 rounded select-none">
+                      ({awayPenalty})
+                    </span>
+                  )}
+                </div>
               )}
             </div>
           )}

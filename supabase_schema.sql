@@ -34,6 +34,8 @@ CREATE TABLE public.matches (
     stage TEXT NOT NULL, -- "Group Stage", "Round of 16", etc.
     home_score INT,
     away_score INT,
+    home_penalty_score INT,
+    away_penalty_score INT,
     status TEXT DEFAULT 'NS', -- 'NS' (Not Started), 'LIVE', 'FT' (Finished)
     loss_points INT DEFAULT 0,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL

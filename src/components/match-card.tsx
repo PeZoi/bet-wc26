@@ -414,10 +414,17 @@ export default function MatchCard({
         {/* Match Score or Time */}
         <div className="flex flex-col items-center justify-center px-2 min-w-[70px]">
           {match.status === 'FT' || match.status === 'LIVE' ? (
-            <div className="flex items-center gap-1.5 text-2xl font-mono font-extrabold tracking-tight text-white bg-white/5 px-3 py-1 rounded-lg border border-white/5">
-              <span>{match.home_score ?? 0}</span>
-              <span className="text-muted-foreground font-sans text-xl">:</span>
-              <span>{match.away_score ?? 0}</span>
+            <div className="flex flex-col items-center gap-1">
+              <div className="flex items-center gap-1.5 text-2xl font-mono font-extrabold tracking-tight text-white bg-white/5 px-3 py-1 rounded-lg border border-white/5">
+                <span>{match.home_score ?? 0}</span>
+                <span className="text-muted-foreground font-sans text-xl">:</span>
+                <span>{match.away_score ?? 0}</span>
+              </div>
+              {match.home_penalty_score !== null && match.away_penalty_score !== null && (
+                <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full select-none tracking-tight">
+                  Pen: {match.home_penalty_score} - {match.away_penalty_score}
+                </span>
+              )}
             </div>
           ) : (
             <div className="flex flex-col items-center">

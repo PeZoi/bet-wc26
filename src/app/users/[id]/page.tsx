@@ -65,6 +65,8 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
         stage,
         home_score,
         away_score,
+        home_penalty_score,
+        away_penalty_score,
         status,
         handicap_team,
         handicap_value
@@ -484,10 +486,17 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                             </div>
 
                             {/* Score */}
-                            <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-white bg-white/5 px-2.5 py-0.5 rounded-lg border border-white/5 mx-3 flex-shrink-0">
-                              <span>{match.home_score}</span>
-                              <span className="text-muted-foreground font-sans text-xs">:</span>
-                              <span>{match.away_score}</span>
+                            <div className="flex flex-col items-center justify-center mx-3 flex-shrink-0 gap-0.5">
+                              <div className="flex items-center gap-1.5 font-mono font-extrabold text-sm text-white bg-white/5 px-2.5 py-0.5 rounded-lg border border-white/5">
+                                <span>{match.home_score}</span>
+                                <span className="text-muted-foreground font-sans text-xs">:</span>
+                                <span>{match.away_score}</span>
+                              </div>
+                              {match.home_penalty_score !== null && match.away_penalty_score !== null && (
+                                <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1 rounded select-none tracking-tighter">
+                                  ({match.home_penalty_score}-{match.away_penalty_score})
+                                </span>
+                              )}
                             </div>
 
                             {/* Away */}
