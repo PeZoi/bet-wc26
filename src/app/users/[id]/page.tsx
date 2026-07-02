@@ -65,6 +65,8 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
         stage,
         home_score,
         away_score,
+        home_score_90,
+        away_score_90,
         home_penalty_score,
         away_penalty_score,
         status,
@@ -142,17 +144,20 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
     const handicapVal = Number(match.handicap_value || 0);
     let isMatchDraw = false;
 
-    if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+    const homeScore90 = match.home_score_90 !== null && match.home_score_90 !== undefined ? match.home_score_90 : match.home_score;
+    const awayScore90 = match.away_score_90 !== null && match.away_score_90 !== undefined ? match.away_score_90 : match.away_score;
+
+    if (match.status === 'FT' && homeScore90 !== null && awayScore90 !== null) {
       if (handicapTeam === 'none' || handicapVal === 0) {
-        isMatchDraw = match.home_score === match.away_score;
+        isMatchDraw = homeScore90 === awayScore90;
       } else {
         let diff = 0;
         if (handicapTeam === 'home') {
-          diff = (match.home_score - handicapVal) - match.away_score;
+          diff = (homeScore90 - handicapVal) - awayScore90;
         } else if (handicapTeam === 'away') {
-          diff = match.home_score - (match.away_score - handicapVal);
+          diff = homeScore90 - (awayScore90 - handicapVal);
         } else {
-          diff = match.home_score - match.away_score;
+          diff = homeScore90 - awayScore90;
         }
         isMatchDraw = diff === 0;
       }
@@ -431,17 +436,20 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                       const handicapVal = Number(match.handicap_value || 0);
                       let isMatchDraw = false;
 
-                      if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+                      const homeScore90 = match.home_score_90 !== null && match.home_score_90 !== undefined ? match.home_score_90 : match.home_score;
+                      const awayScore90 = match.away_score_90 !== null && match.away_score_90 !== undefined ? match.away_score_90 : match.away_score;
+
+                      if (match.status === 'FT' && homeScore90 !== null && awayScore90 !== null) {
                         if (handicapTeam === 'none' || handicapVal === 0) {
-                          isMatchDraw = match.home_score === match.away_score;
+                          isMatchDraw = homeScore90 === awayScore90;
                         } else {
                           let diff = 0;
                           if (handicapTeam === 'home') {
-                            diff = (match.home_score - handicapVal) - match.away_score;
+                            diff = (homeScore90 - handicapVal) - awayScore90;
                           } else if (handicapTeam === 'away') {
-                            diff = match.home_score - (match.away_score - handicapVal);
+                            diff = homeScore90 - (awayScore90 - handicapVal);
                           } else {
-                            diff = match.home_score - match.away_score;
+                            diff = homeScore90 - awayScore90;
                           }
                           isMatchDraw = diff === 0;
                         }
@@ -496,6 +504,13 @@ export default async function UserDetailPage({ params }: UserDetailPageProps) {
                                 <span className="text-[9px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-1 rounded select-none tracking-tighter">
                                   ({match.home_penalty_score}-{match.away_penalty_score})
                                 </span>
+                              )}
+                              {match.home_score_90 !== null && match.home_score_90 !== undefined &&
+                                match.away_score_90 !== null && match.away_score_90 !== undefined &&
+                                (match.home_score_90 !== match.home_score || match.away_score_90 !== match.away_score) && (
+                                  <span className="text-[9px] font-bold text-muted-foreground/60 select-none tracking-tighter">
+                                    {"90':"} {match.home_score_90}-{match.away_score_90}
+                                  </span>
                               )}
                             </div>
 

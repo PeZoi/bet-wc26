@@ -41,25 +41,57 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
   const [editingMatch, setEditingMatch] = useState<Match | null>(null);
   const [tempHandicapTeam, setTempHandicapTeam] = useState<'home' | 'away' | 'none'>('none');
   const [tempHandicapValue, setTempHandicapValue] = useState<number>(0);
+  const [tempHomeScore, setTempHomeScore] = useState<number>(0);
+  const [tempAwayScore, setTempAwayScore] = useState<number>(0);
+  const [tempHomeScore90, setTempHomeScore90] = useState<string>('');
+  const [tempAwayScore90, setTempAwayScore90] = useState<string>('');
+  const [tempHomePenalty, setTempHomePenalty] = useState<string>('');
+  const [tempAwayPenalty, setTempAwayPenalty] = useState<string>('');
+  const [tempStatus, setTempStatus] = useState<'NS' | 'LIVE' | 'FT'>('NS');
+  const [tempLossPoints, setTempLossPoints] = useState<number>(0);
+  const [tempDrawPoints, setTempDrawPoints] = useState<number>(0);
+  const [tempApplyScope, setTempApplyScope] = useState<'match' | 'stage' | 'group_stage'>('match');
   const [isSavingHandicap, setIsSavingHandicap] = useState(false);
 
   const handleOpenEditModal = (match: Match) => {
     setEditingMatch(match);
     setTempHandicapTeam((match.handicap_team as 'home' | 'away' | 'none') || 'none');
     setTempHandicapValue(match.handicap_value ?? 0);
+    setTempHomeScore(match.home_score ?? 0);
+    setTempAwayScore(match.away_score ?? 0);
+    setTempHomeScore90(match.home_score_90 !== null && match.home_score_90 !== undefined ? String(match.home_score_90) : '');
+    setTempAwayScore90(match.away_score_90 !== null && match.away_score_90 !== undefined ? String(match.away_score_90) : '');
+    setTempHomePenalty(match.home_penalty_score !== null && match.home_penalty_score !== undefined ? String(match.home_penalty_score) : '');
+    setTempAwayPenalty(match.away_penalty_score !== null && match.away_penalty_score !== undefined ? String(match.away_penalty_score) : '');
+    setTempStatus(match.status as 'NS' | 'LIVE' | 'FT');
+    setTempLossPoints(match.loss_points ?? 0);
+    setTempDrawPoints(match.draw_points ?? 0);
+    setTempApplyScope('match');
   };
 
   const handleSaveHandicap = async () => {
     if (!editingMatch) return;
     setIsSavingHandicap(true);
     try {
+      const hScore90 = tempHomeScore90 === '' ? null : parseInt(tempHomeScore90, 10);
+      const aScore90 = tempAwayScore90 === '' ? null : parseInt(tempAwayScore90, 10);
+      const hPen = tempHomePenalty === '' ? null : parseInt(tempHomePenalty, 10);
+      const aPen = tempAwayPenalty === '' ? null : parseInt(tempAwayPenalty, 10);
+
       const res = await updateMatchScoreAdmin(
         editingMatch.id,
-        editingMatch.home_score ?? 0,
-        editingMatch.away_score ?? 0,
-        editingMatch.status,
+        tempHomeScore,
+        tempAwayScore,
+        tempStatus,
         tempHandicapTeam,
-        tempHandicapTeam === 'none' ? 0 : tempHandicapValue
+        tempHandicapTeam === 'none' ? 0 : tempHandicapValue,
+        tempLossPoints,
+        tempApplyScope,
+        tempDrawPoints,
+        hScore90,
+        aScore90,
+        hPen,
+        aPen
       );
 
       if (res.success) {
@@ -239,17 +271,13 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
 
                     {/* Edit Button */}
                     <td className="py-3 px-4 text-right">
-                      {match.status !== 'FT' ? (
-                        <button
-                          onClick={() => handleOpenEditModal(match)}
-                          className="inline-flex items-center justify-center p-2 rounded-lg bg-primary/10 border border-primary/25 text-primary hover:bg-primary/20 transition-all cursor-pointer"
-                          title="Thiết lập chấp"
-                        >
-                          <Edit3 className="h-4 w-4" />
-                        </button>
-                      ) : (
-                        <span className="text-[10px] text-muted-foreground/40 italic">Khóa sửa</span>
-                      )}
+                      <button
+                        onClick={() => handleOpenEditModal(match)}
+                        className="inline-flex items-center justify-center p-2 rounded-lg bg-primary/10 border border-primary/25 text-primary hover:bg-primary/20 transition-all cursor-pointer"
+                        title="Thiết lập chấp & Tỉ số (Admin)"
+                      >
+                        <Edit3 className="h-4 w-4" />
+                      </button>
                     </td>
                   </tr>
                 );
@@ -259,7 +287,7 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
         </div>
       </div>
 
-      {/* Handicap Configuration Dialog */}
+      {/* Handicap & Match Configuration Dialog */}
       <Portal>
         <AnimatePresence>
           {editingMatch && (
@@ -279,12 +307,12 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 exit={{ opacity: 0, scale: 0.95, y: 20 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="relative w-full max-w-[480px] bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 space-y-6 text-left"
+                className="relative w-full max-w-[500px] max-h-[90vh] flex flex-col bg-[#11131a] border border-white/10 rounded-[28px] overflow-hidden shadow-[0_0_50px_-12px_rgba(0,0,0,0.8)] text-white z-10 p-7 text-left"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <h3 className="text-lg font-bold text-white tracking-wide">
-                    Cấu hình kèo chấp Handicap
+                    Cấu hình trận đấu & Điểm số
                   </h3>
                   <button
                     onClick={() => setEditingMatch(null)}
@@ -294,123 +322,378 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
                   </button>
                 </div>
 
-                {/* Match Header Info */}
-                <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
-                  {/* Home Team */}
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={editingMatch.home_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={editingMatch.home_team} 
-                    />
-                    <TeamName 
-                      name={editingMatch.home_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
+                {/* Scrollable Content */}
+                <div className="flex-1 overflow-y-auto my-4 pr-1 space-y-6 scrollbar-thin scrollbar-thumb-white/10 scrollbar-track-transparent">
+                  {/* Match Header Info */}
+                  <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-4 gap-4">
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={editingMatch.home_logo} 
+                        className="h-9 w-[54px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={editingMatch.home_team} 
+                      />
+                      <TeamName 
+                        name={editingMatch.home_team} 
+                        className="mt-2 text-xs font-bold text-white max-w-full justify-center" 
+                      />
+                    </div>
+                    <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2 py-0.5 rounded-md uppercase tracking-wider">
+                      vs
+                    </div>
+                    <div className="flex flex-col items-center flex-1 min-w-0">
+                      <img 
+                        src={editingMatch.away_logo} 
+                        className="h-9 w-[54px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
+                        alt={editingMatch.away_team} 
+                      />
+                      <TeamName 
+                        name={editingMatch.away_team} 
+                        className="mt-2 text-xs font-bold text-white max-w-full justify-center" 
+                      />
+                    </div>
                   </div>
 
-                  {/* VS badge */}
-                  <div className="text-[10px] font-mono font-bold bg-[#242735] border border-white/[0.08] text-muted-foreground/80 px-2.5 py-1 rounded-md uppercase tracking-wider">
-                    vs
+                  {/* Status Select */}
+                  <div className="space-y-2">
+                    <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                      Trạng thái trận đấu
+                    </label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {[
+                        { id: 'NS', label: 'Chưa đá' },
+                        { id: 'LIVE', label: 'Đang đá (LIVE)' },
+                        { id: 'FT', label: 'Kết thúc (FT)' }
+                      ].map((statusOpt) => {
+                        const isSelected = tempStatus === statusOpt.id;
+                        return (
+                          <button
+                            key={statusOpt.id}
+                            type="button"
+                            onClick={() => setTempStatus(statusOpt.id as 'NS' | 'LIVE' | 'FT')}
+                            className={`py-2 px-2 text-xs font-bold rounded-xl border transition-all cursor-pointer text-center ${
+                              isSelected
+                                ? 'bg-primary/10 border-primary/45 text-primary'
+                                : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
+                            }`}
+                          >
+                            {statusOpt.label}
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
 
-                  {/* Away Team */}
-                  <div className="flex flex-col items-center flex-1 min-w-0">
-                    <img 
-                      src={editingMatch.away_logo} 
-                      className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                      alt={editingMatch.away_team} 
-                    />
-                    <TeamName 
-                      name={editingMatch.away_team} 
-                      className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
-                    />
-                  </div>
-                </div>
+                  {/* Scores Inputs */}
+                  {(tempStatus === 'LIVE' || tempStatus === 'FT') && (
+                    <div className="space-y-4 bg-white/[0.02] border border-white/[0.04] p-4 rounded-2xl">
+                      {/* Tỉ số chung cuộc */}
+                      <div className="space-y-2">
+                        <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                          Tỉ số chung cuộc (gồm cả hiệp phụ nếu có)
+                        </label>
+                        <div className="flex items-center justify-center gap-4">
+                          <input
+                            type="number"
+                            min="0"
+                            value={tempHomeScore}
+                            onChange={(e) => setTempHomeScore(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/25"
+                            placeholder="Home"
+                          />
+                          <span className="text-muted-foreground font-bold font-mono">:</span>
+                          <input
+                            type="number"
+                            min="0"
+                            value={tempAwayScore}
+                            onChange={(e) => setTempAwayScore(Math.max(0, parseInt(e.target.value) || 0))}
+                            className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/25"
+                            placeholder="Away"
+                          />
+                        </div>
+                      </div>
 
-                {/* Handicap Team Select */}
-                <div className="space-y-3">
-                  <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                    Chọn đội chấp
-                  </label>
-                  <div className="grid grid-cols-3 gap-2.5">
-                    {[
-                      { id: 'none', label: 'Không chấp' },
-                      { id: 'home', label: `${translateTeamName(editingMatch.home_team)} chấp` },
-                      { id: 'away', label: `${translateTeamName(editingMatch.away_team)} chấp` }
-                    ].map((option) => {
-                      const isSelected = tempHandicapTeam === option.id;
-                      return (
-                        <button
-                          key={option.id}
-                          type="button"
-                          onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
-                          className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
-                            isSelected
-                              ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
-                              : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
-                          }`}
-                          title={option.label}
-                        >
-                          {option.label}
-                        </button>
-                      );
-                    })}
-                  </div>
-                </div>
+                      {/* Tỉ số 90 phút (regular time) */}
+                      {!editingMatch.stage.toLowerCase().includes('bảng') && !editingMatch.stage.toLowerCase().includes('group') && (
+                        <div className="space-y-2 border-t border-white/5 pt-3">
+                          <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                            Tỉ số phút 90 (để tính kèo)
+                          </label>
+                          <p className="text-[10px] text-muted-foreground italic mb-1">
+                            Nếu trận đấu có hiệp phụ, tỉ số này thường là hoà (VD: 1-1). Nếu để trống, hệ thống sẽ tự lấy tỉ số chung cuộc ở trên.
+                          </p>
+                          <div className="flex items-center justify-center gap-4">
+                            <input
+                              type="number"
+                              min="0"
+                              value={tempHomeScore90}
+                              onChange={(e) => setTempHomeScore90(e.target.value)}
+                              className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/25"
+                              placeholder="Trống"
+                            />
+                            <span className="text-muted-foreground font-bold font-mono">:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={tempAwayScore90}
+                              onChange={(e) => setTempAwayScore90(e.target.value)}
+                              className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-primary/40 focus:ring-1 focus:ring-primary/25"
+                              placeholder="Trống"
+                            />
+                          </div>
+                        </div>
+                      )}
 
-                {/* Handicap Value Input */}
-                {tempHandicapTeam !== 'none' && (
+                      {/* Tỉ số Penalty */}
+                      {!editingMatch.stage.toLowerCase().includes('bảng') && !editingMatch.stage.toLowerCase().includes('group') && (
+                        <div className="space-y-2 border-t border-white/5 pt-3">
+                          <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                            Tỉ số loạt sút Penalty (nếu có)
+                          </label>
+                          <div className="flex items-center justify-center gap-4">
+                            <input
+                              type="number"
+                              min="0"
+                              value={tempHomePenalty}
+                              onChange={(e) => setTempHomePenalty(e.target.value)}
+                              className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25"
+                              placeholder="Trống"
+                            />
+                            <span className="text-muted-foreground font-bold font-mono">:</span>
+                            <input
+                              type="number"
+                              min="0"
+                              value={tempAwayPenalty}
+                              onChange={(e) => setTempAwayPenalty(e.target.value)}
+                              className="w-20 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-xl py-2 px-3 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25"
+                              placeholder="Trống"
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {/* Handicap Team Select */}
                   <div className="space-y-3">
                     <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
-                      Tỷ lệ chấp (Trái)
+                      Chọn đội chấp (Handicap)
                     </label>
-                    <div className="flex items-center gap-3">
-                      <input
-                        type="number"
-                        step="0.25"
-                        min="0"
-                        value={tempHandicapValue}
-                        onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
-                        className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
-                        placeholder="0.5"
-                      />
-                      {/* Quick Selection Buttons */}
-                      <div className="grid grid-cols-4 gap-1.5 flex-1">
-                        {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
-                          const isValSelected = tempHandicapValue === val;
-                          return (
-                            <button
-                              key={val}
-                              type="button"
-                              onClick={() => setTempHandicapValue(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
-                                  ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
-                                  : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
-                            >
-                              {val}
-                            </button>
-                          );
-                        })}
+                    <div className="grid grid-cols-3 gap-2.5">
+                      {[
+                        { id: 'none', label: 'Không chấp' },
+                        { id: 'home', label: `${translateTeamName(editingMatch.home_team)} chấp` },
+                        { id: 'away', label: `${translateTeamName(editingMatch.away_team)} chấp` }
+                      ].map((option) => {
+                        const isSelected = tempHandicapTeam === option.id;
+                        return (
+                          <button
+                            key={option.id}
+                            type="button"
+                            onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
+                            className={`py-3 px-2.5 text-xs font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[50px] leading-snug ${
+                              isSelected
+                                ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981]'
+                                : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
+                            }`}
+                          >
+                            {option.label}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Handicap Value Input */}
+                  {tempHandicapTeam !== 'none' && (
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Tỷ lệ chấp (Trái)
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="number"
+                          step="0.25"
+                          min="0"
+                          value={tempHandicapValue}
+                          onChange={(e) => setTempHandicapValue(Math.max(0, parseFloat(e.target.value) || 0))}
+                          className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-[#10b981]/40 focus:ring-1 focus:ring-[#10b981]/25 transition-all shadow-inner"
+                          placeholder="0.5"
+                        />
+                        <div className="grid grid-cols-4 gap-1.5 flex-1">
+                          {[0.25, 0.5, 0.75, 1.0, 1.25, 1.5, 1.75, 2.0].map((val) => {
+                            const isValSelected = tempHandicapValue === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTempHandicapValue(val)}
+                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                  isValSelected
+                                    ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
+                                    : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                                }`}
+                              >
+                                {val}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Points Configuration (Loss / Draw) */}
+                  <div className="space-y-4 border-t border-white/5 pt-4">
+                    {/* Loss Points Input */}
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Điểm cộng khi dự đoán sai trận này
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={tempLossPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempLossPoints)}
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(/,/g, '');
+                            if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                              const numValue = parseInt(rawValue, 10);
+                              setTempLossPoints(isNaN(numValue) ? 0 : numValue);
+                            }
+                          }}
+                          className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-amber-500/40 focus:ring-1 focus:ring-amber-500/25 transition-all shadow-inner"
+                          placeholder="0"
+                        />
+                        <div className="grid grid-cols-4 gap-1.5 flex-1">
+                          {[0, 10000, 20000, 30000].map((val) => {
+                            const isValSelected = tempLossPoints === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTempLossPoints(val)}
+                                className={`py-2 px-1 text-[10px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                  isValSelected
+                                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
+                                    : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                                }`}
+                              >
+                                {val === 0 ? '0' : `+${val / 1000}k`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Draw Points Input */}
+                    <div className="space-y-3">
+                      <label className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Điểm cộng khi trận đấu hoà
+                      </label>
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={tempDrawPoints === 0 ? '' : new Intl.NumberFormat('en-US').format(tempDrawPoints)}
+                          onChange={(e) => {
+                            const rawValue = e.target.value.replace(/,/g, '');
+                            if (rawValue === '' || /^\d+$/.test(rawValue)) {
+                              const numValue = parseInt(rawValue, 10);
+                              setTempDrawPoints(isNaN(numValue) ? 0 : numValue);
+                            }
+                          }}
+                          className="w-28 text-center font-mono font-bold bg-[#181b25]/80 border border-white/[0.08] rounded-2xl py-3.5 px-4 text-white text-base focus:outline-none focus:border-sky-500/40 focus:ring-1 focus:ring-sky-500/25 transition-all shadow-inner"
+                          placeholder="0"
+                        />
+                        <div className="grid grid-cols-4 gap-1.5 flex-1">
+                          {[0, 5000, 10000, 15000].map((val) => {
+                            const isValSelected = tempDrawPoints === val;
+                            return (
+                              <button
+                                key={val}
+                                type="button"
+                                onClick={() => setTempDrawPoints(val)}
+                                className={`py-2 px-1 text-[10px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
+                                  isValSelected
+                                    ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
+                                    : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
+                                }`}
+                              >
+                                {val === 0 ? '0' : `+${val / 1000}k`}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Scope Select */}
+                    <div className="space-y-2 bg-white/[0.01] border border-white/[0.03] p-3 rounded-2xl">
+                      <span className="text-[11px] font-bold text-muted-foreground/60 uppercase tracking-wider block">
+                        Phạm vi áp dụng (Điểm sai & Điểm hoà)
+                      </span>
+                      <div className="flex flex-col gap-2 mt-1">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="applyScope"
+                            value="match"
+                            checked={tempApplyScope === 'match'}
+                            onChange={() => setTempApplyScope('match')}
+                            className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                          />
+                          <span className="text-[11px] font-medium text-muted-foreground hover:text-white">
+                            Chỉ áp dụng cho trận đấu này
+                          </span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <input
+                            type="radio"
+                            name="applyScope"
+                            value="stage"
+                            checked={tempApplyScope === 'stage'}
+                            onChange={() => setTempApplyScope('stage')}
+                            className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                          />
+                          <span className="text-[11px] font-medium text-muted-foreground hover:text-white">
+                            Áp dụng cho toàn bộ vòng đấu ({editingMatch.stage})
+                          </span>
+                        </label>
+                        {(editingMatch.stage.toLowerCase().includes('bảng') || editingMatch.stage.toLowerCase().includes('group')) && (
+                          <label className="flex items-center gap-2 cursor-pointer select-none">
+                            <input
+                              type="radio"
+                              name="applyScope"
+                              value="group_stage"
+                              checked={tempApplyScope === 'group_stage'}
+                              onChange={() => setTempApplyScope('group_stage')}
+                              className="h-4 w-4 rounded-full border-white/20 bg-white/5 text-amber-500 focus:ring-amber-500/30 cursor-pointer accent-amber-500"
+                            />
+                            <span className="text-[11px] font-medium text-muted-foreground hover:text-white">
+                              Áp dụng cho toàn bộ Vòng bảng
+                            </span>
+                          </label>
+                        )}
                       </div>
                     </div>
                   </div>
-                )}
+                </div>
 
-                {/* Footer Actions */}
-                <div className="flex items-center justify-end gap-3 pt-4 border-t border-white/5">
+                {/* Footer Buttons */}
+                <div className="flex items-center justify-end gap-3 border-t border-white/5 pt-4">
                   <button
+                    type="button"
                     onClick={() => setEditingMatch(null)}
-                    className="px-6 py-2.5 text-xs sm:text-sm font-bold text-muted-foreground hover:text-white bg-[#1a1c26] hover:bg-[#222533] border border-white/[0.08] rounded-full transition-all cursor-pointer"
+                    className="py-2 px-5 rounded-xl border border-white/10 hover:bg-white/5 text-xs font-bold transition-all cursor-pointer"
                   >
                     Hủy
                   </button>
                   <button
+                    type="button"
                     onClick={handleSaveHandicap}
                     disabled={isSavingHandicap}
-                    className="px-7 py-2.5 text-xs sm:text-sm font-extrabold text-white bg-gradient-to-r from-[#10b981] to-[#059669] hover:from-[#11f0a3] hover:to-[#059669] rounded-full shadow-[0_4px_20px_rgba(16,185,129,0.25)] hover:shadow-[0_4px_25px_rgba(16,185,129,0.4)] transition-all duration-300 cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                    className="py-2 px-6 rounded-xl bg-gradient-to-r from-[#10b981] to-[#059669] text-white text-xs font-bold shadow-md shadow-emerald-500/10 hover:shadow-emerald-500/20 active:scale-[0.98] transition-all disabled:opacity-50 cursor-pointer flex items-center gap-1.5"
                   >
                     {isSavingHandicap ? (
                       <>
@@ -418,7 +701,7 @@ export default function AdminClient({ initialMatches }: AdminClientProps) {
                         Đang lưu...
                       </>
                     ) : (
-                      'Lưu thay đổi'
+                      'Lưu cấu hình'
                     )}
                   </button>
                 </div>

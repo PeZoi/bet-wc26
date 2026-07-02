@@ -56,6 +56,33 @@ const axiosInstance = axios.create({
 const CORSPROXY_KEY = process.env.CORSPROXY_KEY || 'ebfba0cb';
 
 /**
+ * Trích xuất tỉ số 90 phút từ danh sách scorers của API.
+ * Đếm số lượng bàn thắng được ghi trước hoặc trong phút 90 (bao gồm bù giờ, ví dụ "90+2'").
+ */
+function parseScore90FromScorers(totalScore: number, scorers: string | null | undefined): number {
+  if (!scorers || scorers === 'null' || !scorers.trim()) return totalScore;
+  try {
+    // scorers có dạng: {"Romelu Lukaku 86'","Youri Tielemans 89'"} hoặc "{“J. Quiñones 9'”,”R. Jiménez 67'”}"
+    // Lấy tất cả các số phút trước ký tự '
+    const matches = scorers.match(/\d+(?:\+\d+)?'/g);
+    if (!matches) return totalScore;
+    
+    let score90 = 0;
+    for (const m of matches) {
+      const minStr = m.split('+')[0].replace("'", "");
+      const minute = parseInt(minStr, 10);
+      if (!isNaN(minute) && minute <= 90) {
+        score90++;
+      }
+    }
+    return score90;
+  } catch (e) {
+    console.error('Lỗi khi parse scorers:', e);
+    return totalScore;
+  }
+}
+
+/**
  * Sync fixtures/matches list from worldcup26.ir to database (with fallback to API-Football and mockMatches).
  */
 export async function syncMatchesHelper() {
@@ -219,6 +246,31 @@ export async function syncMatchesHelper() {
         return isNaN(parsed) ? null : parsed;
       };
 
+      const rawHomeScore = (status === 'FT' || status === 'LIVE') ? parseInt(game.home_score, 10) : null;
+      const rawAwayScore = (status === 'FT' || status === 'LIVE') ? parseInt(game.away_score, 10) : null;
+      const homePenalty = parsePenalty(game.home_penalty_score);
+      const awayPenalty = parsePenalty(game.away_penalty_score);
+
+      let home_score_90 = null;
+      let away_score_90 = null;
+
+      if (status === 'FT' || status === 'LIVE') {
+        if (homePenalty !== null || awayPenalty !== null) {
+          // Trận đấu đi vào loạt penalty -> Tỉ số 90 phút chắc chắn là HÒA (lấy rawHomeScore, rawAwayScore vì lúc này API thường trả về tỉ số hòa sau 120 phút)
+          home_score_90 = rawHomeScore;
+          away_score_90 = rawAwayScore;
+        } else if (rawHomeScore !== null && rawAwayScore !== null && !game.type.includes('group')) {
+          // Trận knockout có kết quả thắng thua (có thể kết thúc ở 90p hoặc 120p)
+          // Ta parse scorers để xem có bàn thắng hiệp phụ (> 90) không
+          home_score_90 = parseScore90FromScorers(rawHomeScore, game.home_scorers);
+          away_score_90 = parseScore90FromScorers(rawAwayScore, game.away_scorers);
+        } else {
+          // Vòng bảng hoặc trận thông thường: tỉ số 90p chính là tỉ số chung cuộc
+          home_score_90 = rawHomeScore;
+          away_score_90 = rawAwayScore;
+        }
+      }
+
       return {
         id,
         home_team,
@@ -227,13 +279,15 @@ export async function syncMatchesHelper() {
         away_logo,
         match_time: parseLocalDate(game.local_date, game.stadium_id),
         stage: translateStage(game),
-        home_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.home_score, 10) : null,
-        away_score: (status === 'FT' || status === 'LIVE') ? parseInt(game.away_score, 10) : null,
+        home_score: rawHomeScore,
+        away_score: rawAwayScore,
+        home_score_90,
+        away_score_90,
         status,
         home_scorers: game.home_scorers || null,
         away_scorers: game.away_scorers || null,
-        home_penalty_score: parsePenalty(game.home_penalty_score),
-        away_penalty_score: parsePenalty(game.away_penalty_score),
+        home_penalty_score: homePenalty,
+        away_penalty_score: awayPenalty,
         updated_at: new Date().toISOString()
       };
     });
@@ -335,22 +389,66 @@ export async function syncMatchesHelper() {
         league: {
           round: string;
         };
+        score: {
+          fulltime: {
+            home: number | null;
+            away: number | null;
+          };
+          extratime: {
+            home: number | null;
+            away: number | null;
+          };
+          penalty: {
+            home: number | null;
+            away: number | null;
+          };
+        };
       }
 
       if (data.response && Array.isArray(data.response) && data.response.length > 0) {
-        const matchesToUpsert = (data.response as ApiFixtureItem[]).map((item) => ({
-          id: item.fixture.id,
-          home_team: item.teams.home.name,
-          away_team: item.teams.away.name,
-          home_logo: item.teams.home.logo,
-          away_logo: item.teams.away.logo,
-          match_time: item.fixture.date,
-          stage: translateRound(item.league.round),
-          home_score: item.goals.home,
-          away_score: item.goals.away,
-          status: item.fixture.status.short,
-          updated_at: new Date().toISOString()
-        }));
+        const matchesToUpsert = (data.response as ApiFixtureItem[]).map((item) => {
+          const isKnockout = !item.league.round.toLowerCase().includes('group');
+          let home_score = item.goals.home;
+          let away_score = item.goals.away;
+          let home_score_90 = item.goals.home;
+          let away_score_90 = item.goals.away;
+          let home_penalty_score = item.score.penalty.home;
+          let away_penalty_score = item.score.penalty.away;
+
+          // Nếu là trận knockout và có hiệp phụ hoặc penalty
+          if (isKnockout && (item.score.extratime.home !== null || item.score.penalty.home !== null)) {
+            // Tỉ số 90 phút chính là tỉ số fulltime
+            home_score_90 = item.score.fulltime.home;
+            away_score_90 = item.score.fulltime.away;
+            
+            // Nếu không có penalty (thắng ở hiệp phụ), ta dùng tỉ số sau hiệp phụ (120 phút) làm penalty score giả lập để vẽ nhánh đi tiếp
+            if (item.score.penalty.home === null && item.score.extratime.home !== null) {
+              home_penalty_score = item.goals.home;
+              away_penalty_score = item.goals.away;
+              // Đồng thời tỉ số chính (home_score/away_score) vẫn là tỉ số 90 phút để đảm bảo hiển thị đúng và đồng bộ
+              home_score = item.score.fulltime.home;
+              away_score = item.score.fulltime.away;
+            }
+          }
+
+          return {
+            id: item.fixture.id,
+            home_team: item.teams.home.name,
+            away_team: item.teams.away.name,
+            home_logo: item.teams.home.logo,
+            away_logo: item.teams.away.logo,
+            match_time: item.fixture.date,
+            stage: translateRound(item.league.round),
+            home_score,
+            away_score,
+            home_score_90,
+            away_score_90,
+            home_penalty_score,
+            away_penalty_score,
+            status: item.fixture.status.short,
+            updated_at: new Date().toISOString()
+          };
+        });
 
         // Clean up any matches that are not in this new API response (e.g. old mock matches 1001-1012)
         const apiIds = matchesToUpsert.map((m: { id: number }) => m.id);

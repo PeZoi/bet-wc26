@@ -141,7 +141,11 @@ export async function updateMatchScoreAdmin(
   handicapValue: number,
   lossPoints: number = 0,
   applyScope: 'match' | 'stage' | 'group_stage' = 'match',
-  drawPoints: number = 0
+  drawPoints: number = 0,
+  homeScore90: number | null = null,
+  awayScore90: number | null = null,
+  homePenaltyScore: number | null = null,
+  awayPenaltyScore: number | null = null
 ) {
   try {
     const supabase = await createClient();
@@ -210,6 +214,10 @@ export async function updateMatchScoreAdmin(
       .update({
         home_score: homeScore,
         away_score: awayScore,
+        home_score_90: homeScore90,
+        away_score_90: awayScore90,
+        home_penalty_score: homePenaltyScore,
+        away_penalty_score: awayPenaltyScore,
         status: status,
         handicap_team: handicapTeam,
         handicap_value: handicapValue,

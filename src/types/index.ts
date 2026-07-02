@@ -30,6 +30,8 @@ export interface Match {
   away_scorers?: string | null;
   home_penalty_score?: number | null;
   away_penalty_score?: number | null;
+  home_score_90?: number | null;
+  away_score_90?: number | null;
 }
 
 export interface Prediction {

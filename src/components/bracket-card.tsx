@@ -162,21 +162,26 @@ export default function BracketCard({
     );
   };
 
+
+
   const handicapTeam = match?.handicap_team || 'none';
   const handicapVal = Number(match?.handicap_value || 0);
   let isDraw = false;
 
-  if (match && match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+  const homeScore90 = match?.home_score_90 !== null && match?.home_score_90 !== undefined ? match.home_score_90 : match?.home_score;
+  const awayScore90 = match?.away_score_90 !== null && match?.away_score_90 !== undefined ? match.away_score_90 : match?.away_score;
+
+  if (match && match.status === 'FT' && typeof homeScore90 === 'number' && typeof awayScore90 === 'number') {
     if (handicapTeam === 'none' || handicapVal === 0) {
-      isDraw = match.home_score === match.away_score;
+      isDraw = homeScore90 === awayScore90;
     } else {
       let diff = 0;
       if (handicapTeam === 'home') {
-        diff = (match.home_score - handicapVal) - match.away_score;
+        diff = (homeScore90 - handicapVal) - awayScore90;
       } else if (handicapTeam === 'away') {
-        diff = match.home_score - (match.away_score - handicapVal);
+        diff = homeScore90 - (awayScore90 - handicapVal);
       } else {
-        diff = match.home_score - match.away_score;
+        diff = homeScore90 - awayScore90;
       }
       isDraw = diff === 0;
     }
@@ -348,6 +353,11 @@ export default function BracketCard({
                   >
                     {homeScore}
                   </span>
+                  {match.home_score_90 !== null && match.home_score_90 !== undefined && match.home_score_90 !== match.home_score && (
+                    <span className="text-[9px] text-muted-foreground/60 select-none ml-1">
+                      {"(90':"} {match.home_score_90}{")"}
+                    </span>
+                  )}
                   {homePenalty !== null && (
                     <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/25 px-1 rounded select-none">
                       ({homePenalty})
@@ -396,6 +406,11 @@ export default function BracketCard({
                   >
                     {awayScore}
                   </span>
+                  {match.away_score_90 !== null && match.away_score_90 !== undefined && match.away_score_90 !== match.away_score && (
+                    <span className="text-[9px] text-muted-foreground/60 select-none ml-1">
+                      {"(90':"} {match.away_score_90}{")"}
+                    </span>
+                  )}
                   {awayPenalty !== null && (
                     <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 border border-amber-500/25 px-1 rounded select-none">
                       ({awayPenalty})

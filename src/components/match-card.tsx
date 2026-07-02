@@ -175,22 +175,24 @@ export default function MatchCard({
     );
   };
 
-  // Calculate badge styling for points earned
   const handicapTeam = match.handicap_team || 'none';
   const handicapVal = Number(match.handicap_value || 0);
   let isDraw = false;
 
-  if (match.status === 'FT' && match.home_score !== null && match.away_score !== null) {
+  const homeScore90 = match.home_score_90 !== null && match.home_score_90 !== undefined ? match.home_score_90 : match.home_score;
+  const awayScore90 = match.away_score_90 !== null && match.away_score_90 !== undefined ? match.away_score_90 : match.away_score;
+
+  if (match.status === 'FT' && typeof homeScore90 === 'number' && typeof awayScore90 === 'number') {
     if (handicapTeam === 'none' || handicapVal === 0) {
-      isDraw = match.home_score === match.away_score;
+      isDraw = homeScore90 === awayScore90;
     } else {
       let diff = 0;
       if (handicapTeam === 'home') {
-        diff = (match.home_score - handicapVal) - match.away_score;
+        diff = (homeScore90 - handicapVal) - awayScore90;
       } else if (handicapTeam === 'away') {
-        diff = match.home_score - (match.away_score - handicapVal);
+        diff = homeScore90 - (awayScore90 - handicapVal);
       } else {
-        diff = match.home_score - match.away_score;
+        diff = homeScore90 - awayScore90;
       }
       isDraw = diff === 0;
     }
@@ -354,7 +356,7 @@ export default function MatchCard({
         {(Number(match.loss_points || 0) > 0 || Number(match.draw_points || 0) > 0) && (
           <div className="flex items-center gap-2 flex-wrap">
             {Number(match.loss_points || 0) > 0 && (
-              <span 
+              <span
                 className="text-[10px] font-extrabold text-amber-400 bg-amber-500/5 border border-amber-500/20 px-2.5 py-1 rounded-lg select-none flex items-center gap-1.5 shadow-sm"
                 title="Điểm cộng khi dự đoán sai trận này"
               >
@@ -363,7 +365,7 @@ export default function MatchCard({
               </span>
             )}
             {Number(match.draw_points || 0) > 0 && (
-              <span 
+              <span
                 className="text-[10px] font-extrabold text-sky-400 bg-sky-500/5 border border-sky-500/20 px-2.5 py-1 rounded-lg select-none flex items-center gap-1.5 shadow-sm"
                 title="Điểm cộng khi trận đấu hoà"
               >
@@ -393,9 +395,9 @@ export default function MatchCard({
               <div className="text-sm font-bold">{match.home_team.substring(0, 3).toUpperCase()}</div>
             )}
           </div>
-          <TeamName 
-            name={match.home_team} 
-            className="mt-2 text-sm font-bold text-foreground max-w-full justify-center" 
+          <TeamName
+            name={match.home_team}
+            className="mt-2 text-sm font-bold text-foreground max-w-full justify-center"
           />
           <div className="min-h-[22px] mt-1.5 flex items-center justify-center select-none">
             {match.handicap_team === 'home' && Number(match.handicap_value || 0) > 0 ? (
@@ -424,6 +426,13 @@ export default function MatchCard({
                 <span className="text-[10px] font-bold text-amber-400 bg-amber-500/10 border border-amber-500/20 px-2 py-0.5 rounded-full select-none tracking-tight">
                   Pen: {match.home_penalty_score} - {match.away_penalty_score}
                 </span>
+              )}
+              {match.home_score_90 !== null && match.home_score_90 !== undefined &&
+                match.away_score_90 !== null && match.away_score_90 !== undefined &&
+                (match.home_score_90 !== match.home_score || match.away_score_90 !== match.away_score) && (
+                  <span className="text-[9px] font-bold text-muted-foreground/80 bg-white/5 border border-white/[0.06] px-1.5 py-0.5 rounded select-none tracking-tight">
+                    {"90':"} {match.home_score_90} - {match.away_score_90}
+                  </span>
               )}
             </div>
           ) : (
@@ -455,9 +464,9 @@ export default function MatchCard({
               <div className="text-sm font-bold">{match.away_team.substring(0, 3).toUpperCase()}</div>
             )}
           </div>
-          <TeamName 
-            name={match.away_team} 
-            className="mt-2 text-sm font-bold text-foreground max-w-full justify-center" 
+          <TeamName
+            name={match.away_team}
+            className="mt-2 text-sm font-bold text-foreground max-w-full justify-center"
           />
           <div className="min-h-[22px] mt-1.5 flex items-center justify-center select-none">
             {match.handicap_team === 'away' && Number(match.handicap_value || 0) > 0 ? (
@@ -594,14 +603,14 @@ export default function MatchCard({
                   <div className="flex items-center justify-between bg-[#161822] border border-white/[0.03] rounded-2xl p-5 gap-4">
                     {/* Home Team */}
                     <div className="flex flex-col items-center flex-1 min-w-0">
-                      <img 
-                        src={match.home_logo} 
-                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                        alt={match.home_team} 
+                      <img
+                        src={match.home_logo}
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5"
+                        alt={match.home_team}
                       />
-                      <TeamName 
-                        name={match.home_team} 
-                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      <TeamName
+                        name={match.home_team}
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center"
                       />
                     </div>
 
@@ -612,14 +621,14 @@ export default function MatchCard({
 
                     {/* Away Team */}
                     <div className="flex flex-col items-center flex-1 min-w-0">
-                      <img 
-                        src={match.away_logo} 
-                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5" 
-                        alt={match.away_team} 
+                      <img
+                        src={match.away_logo}
+                        className="h-10 w-[60px] object-cover rounded-md shadow-md border border-white/[0.06] bg-white/5"
+                        alt={match.away_team}
                       />
-                      <TeamName 
-                        name={match.away_team} 
-                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center" 
+                      <TeamName
+                        name={match.away_team}
+                        className="mt-2 text-xs sm:text-sm font-bold text-white max-w-full justify-center"
                       />
                     </div>
                   </div>
@@ -641,11 +650,10 @@ export default function MatchCard({
                             key={option.id}
                             type="button"
                             onClick={() => setTempHandicapTeam(option.id as 'home' | 'away' | 'none')}
-                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${
-                              isSelected
+                            className={`py-3.5 px-3 text-xs sm:text-sm font-bold rounded-2xl border transition-all cursor-pointer flex items-center justify-center text-center min-h-[56px] leading-snug ${isSelected
                                 ? 'bg-[#0c2a20]/45 border-[#10b981]/60 text-[#10b981] shadow-[0_0_15px_rgba(16,185,129,0.05)]'
                                 : 'bg-[#181b25]/85 border-white/[0.04] text-muted-foreground/85 hover:bg-[#202432] hover:text-white'
-                            }`}
+                              }`}
                             title={option.label}
                           >
                             {option.label}
@@ -680,11 +688,10 @@ export default function MatchCard({
                                 key={val}
                                 type="button"
                                 onClick={() => setTempHandicapValue(val)}
-                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                  isValSelected
+                                className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                     ? 'bg-[#10b981]/15 border-[#10b981]/40 text-[#10b981]'
                                     : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                                }`}
+                                  }`}
                               >
                                 {val}
                               </button>
@@ -724,11 +731,10 @@ export default function MatchCard({
                               key={val}
                               type="button"
                               onClick={() => setTempLossPoints(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                   ? 'bg-amber-500/15 border-amber-500/40 text-amber-400'
                                   : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
+                                }`}
                             >
                               {val}đ
                             </button>
@@ -767,11 +773,10 @@ export default function MatchCard({
                               key={val}
                               type="button"
                               onClick={() => setTempDrawPoints(val)}
-                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${
-                                isValSelected
+                              className={`py-2 px-1 text-[11px] font-mono font-bold rounded-lg border transition-all cursor-pointer text-center ${isValSelected
                                   ? 'bg-sky-500/15 border-sky-500/40 text-sky-400'
                                   : 'bg-[#181b25]/80 border-white/[0.04] text-muted-foreground/80 hover:bg-[#202432] hover:text-white'
-                              }`}
+                                }`}
                             >
                               {val}đ
                             </button>

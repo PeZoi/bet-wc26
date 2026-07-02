@@ -168,7 +168,7 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
     // 2. Lấy danh sách các trận đấu đã kết thúc (FT) và có tỉ số hợp lệ
     const { data: finishedMatches, error: matchesError } = await supabase
       .from('matches')
-      .select('id, home_score, away_score, handicap_team, handicap_value, loss_points, draw_points')
+      .select('id, home_score, away_score, home_score_90, away_score_90, handicap_team, handicap_value, loss_points, draw_points')
       .eq('status', 'FT');
 
     if (matchesError) {
@@ -178,10 +178,14 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
     if (finishedMatches && finishedMatches.length > 0) {
       // Duyệt qua từng trận đấu để đối chiếu và tính điểm cho các dự đoán
       for (const match of finishedMatches) {
-        if (match.home_score === null || match.away_score === null) continue;
+        // Tỉ số 90 phút mặc định lấy home_score_90/away_score_90, nếu null thì fallback về home_score/away_score
+        const homeScore90 = match.home_score_90 !== null && match.home_score_90 !== undefined ? match.home_score_90 : match.home_score;
+        const awayScore90 = match.away_score_90 !== null && match.away_score_90 !== undefined ? match.away_score_90 : match.away_score;
 
-        // Tự động phân định kết quả các kèo thách đấu cá nhân liên quan
-        await autoResolveCustomBets(supabase, match.id, match.home_score, match.away_score);
+        if (homeScore90 === null || awayScore90 === null) continue;
+
+        // Tự động phân định kết quả các kèo thách đấu cá nhân liên quan dựa trên tỉ số 90 phút
+        await autoResolveCustomBets(supabase, match.id, homeScore90, awayScore90);
 
         // Lấy toàn bộ các dự đoán cho trận đấu này
         const { data: predictions, error: predsError } = await supabase
@@ -208,23 +212,23 @@ export async function recalculateAllPendingPoints(): Promise<{ success: boolean;
 
           if (handicapTeam === 'none' || handicapVal === 0) {
             // Cược Châu Âu (1X2)
-            if (match.home_score === match.away_score) {
+            if (homeScore90 === awayScore90) {
               // Trận hoà: không ai đoán đúng
               isDraw = true;
-            } else if (p.prediction_choice === 'home' && match.home_score > match.away_score) {
+            } else if (p.prediction_choice === 'home' && homeScore90 > awayScore90) {
               isCorrect = true;
-            } else if (p.prediction_choice === 'away' && match.home_score < match.away_score) {
+            } else if (p.prediction_choice === 'away' && homeScore90 < awayScore90) {
               isCorrect = true;
             }
           } else {
             // Cược chấp Handicap
             let diff = 0;
             if (handicapTeam === 'home') {
-              diff = (match.home_score - handicapVal) - match.away_score;
+              diff = (homeScore90 - handicapVal) - awayScore90;
             } else if (handicapTeam === 'away') {
-              diff = match.home_score - (match.away_score - handicapVal);
+              diff = homeScore90 - (awayScore90 - handicapVal);
             } else {
-              diff = match.home_score - match.away_score;
+              diff = homeScore90 - awayScore90;
             }
 
             if (diff === 0) {

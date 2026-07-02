@@ -204,6 +204,13 @@ export default async function MatchDetailPage({ params }: MatchDetailPageProps) 
                           Pen: {match.home_penalty_score} - {match.away_penalty_score}
                         </span>
                       )}
+                      {match.home_score_90 !== null && match.home_score_90 !== undefined &&
+                        match.away_score_90 !== null && match.away_score_90 !== undefined &&
+                        (match.home_score_90 !== match.home_score || match.away_score_90 !== match.away_score) && (
+                          <span className="inline-flex items-center text-xs font-bold text-muted-foreground/80 bg-white/5 border border-white/[0.06] px-3 py-0.5 rounded-full select-none tracking-tight">
+                            90 phút: {match.home_score_90} - {match.away_score_90}
+                          </span>
+                      )}
                       {match.status === 'LIVE' ? (
                         <span className="inline-flex items-center gap-1 text-[10px] font-bold text-red-400 bg-red-500/15 border border-red-500/25 px-2.5 py-0.5 rounded-full animate-pulse uppercase tracking-wider">
                           <span className="h-1.5 w-1.5 rounded-full bg-red-500" />
